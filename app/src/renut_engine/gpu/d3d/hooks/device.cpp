@@ -984,6 +984,8 @@ constexpr u32 kDeviceOffsetOwnerThread = 0x2A88;
 // Feeding Frenzy's).
 constexpr u32 kDeviceCapsVa = 0x82019180;  // the constant D3DCAPS9 (peggle1-nx: 0x82070C28, N&B 0x82183B00)
 constexpr u32 kDeviceCapsSize = 0x130;
+// feedingfrenzy2-nx (2026-10-26): XDK 6534 links no D3D_IsFusion (its hook is commented out), so this Peggle 1 word is
+// never read here.
 constexpr u32 kFusionVa = 0x83024414;      // non-zero on a Fusion GPU (peggle1-nx: N&B 0x82F597B4)
 
 // ULONG D3DDevice_AddRef(D3DDevice*) [0x8264E068]

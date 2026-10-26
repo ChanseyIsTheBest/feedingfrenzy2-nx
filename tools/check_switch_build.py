@@ -65,7 +65,9 @@ KNOWN_VECTOR_FMA = {'sub_8298AD60': 'one std::fma of the localized copy n_8298AD
 # of vperm and lvsl in the generated code.
 # feedingfrenzy-nx (2026-10-26): Feeding Frenzy has none (XDK 2571's CRT copies without VMX: no function of the
 # generated code has the 72-vperm-and-lvsl shape; the most vperm, 24 and no lvsl, are in sub_822CA4C0).
-STREAMING_COPIES = []
+# feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's two (XDK 6534's CRT, as Peggle 1's): sub_8220A7C4 and
+# sub_8220B020, 72 vperm128 and one lvsl each (the only functions of the generated code with 40 vperm or more).
+STREAMING_COPIES = ['sub_8220A7C4', 'sub_8220B020']
 def FusedMaddFunctions(gen):
     """The functions of the generated tree with rex::ppc::vmx_madd_ps, and those that inline one of them
     (REX_INL / inl_sub_X copies and the localized copies' inline definitions)."""
