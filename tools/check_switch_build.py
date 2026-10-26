@@ -89,6 +89,22 @@ def FusedMaddFunctions(gen):
     return out
 
 
+def MaddCounts(gen):
+    """name -> how many rex::ppc::vmx_madd_ps calls its generated body has (the functions of FusedMaddFunctions)."""
+    import glob
+    import re
+    out = {}
+    for path in glob.glob(os.path.join(gen, '*_recomp.*.cpp')):
+        src = open(path, encoding='utf-8', errors='replace').read()
+        heads = list(re.finditer(r'^DEFINE_REX_FUNC\((sub_[0-9A-F]{8})\)', src, re.M))
+        for i, m in enumerate(heads):
+            end = heads[i + 1].start() if i + 1 < len(heads) else len(src)
+            n = src.count('vmx_madd_ps', m.end(), end)
+            if n:
+                out[m.group(1)] = n
+    return out
+
+
 DEVKITA64 = next((d + '/devkitA64/bin/' for d in (os.environ.get('DEVKITPRO', ''), 'C:/devkitPro', '/opt/devkitpro')
                   if d and os.path.isdir(d + '/devkitA64/bin')), 'C:/devkitPro/devkitA64/bin/')
 EXE = '.exe' if os.name == 'nt' else ''
@@ -230,6 +246,25 @@ def main():
           f'{len(vmx_fused)} functions ({len(fused)} functions of the generated code use the helper)')
     for f in explained:
         del vector_fma[f]
+    # feedingfrenzy2-nx (2026-10-26, the 1.0.0 LTO build): link-time optimisation inlines a callee across files, so a
+    # thunk that tail-calls a function with vmx_madd_ps gets that function's vector fused multiply-adds
+    # (sub_822E4DE8 and sub_822E4DF8: `lis; addi; vector load; b sub_822E4C28`, 5 fmla each, sub_822E4C28's 5
+    # vmx_madd_ps). Accepted when the function's generated body reaches functions with the helper through at most two
+    # direct calls and has no more vector fused multiply-adds than those functions' vmx_madd_ps.
+    lto_inlined = []
+    if vector_fma:
+        calls = generated_calls()
+        madds = MaddCounts(os.path.join(ROOT, 'app', 'generated', 'default'))
+        for f, n in list(vector_fma.items()):
+            name = f.replace('__imp__', '')
+            reach = set(calls.get(name, ()))
+            reach |= {d for c in list(reach) for d in calls.get(c, ())}
+            helpers = sorted(c for c in reach if c in fused)
+            if helpers and n <= sum(madds.get(c, 0) for c in helpers):
+                lto_inlined.append(f'{name} x{n} (inlines {", ".join(helpers)})')
+                del vector_fma[f]
+    if lto_inlined:
+        print(f'vector fused multiply-adds of vmx_fused_madd inlined by LTO: {"; ".join(lto_inlined)}')
     print(f'fused multiply-adds in recompiled functions: scalar {scalar_fma} (the guest\'s own), vector '
           f'{sum(vector_fma.values())} in {len(vector_fma)} functions (must be 0)'
           + (f'; known pairs of the guest\'s own std::fma: {", ".join(f"{k} x{v}" for k, v in explained.items())}'
