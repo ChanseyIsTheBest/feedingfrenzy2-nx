@@ -205,3 +205,21 @@ default.xex facts), the built-in Switch settings and the speed options. Each now
 with this game's default.xex (title 5841088C, entry 0x821633B0, image 0x00570000, XDK 6534, FeedingFrenzy2.exe 0.0.1.2).
 The player's file was already fixed with the controller section. Comments only: the generated code is the same.
 - Delivered: the rebuilt NRO (`54a8cded...`: the same code, the new built-in files) in `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`; ELF and map `out/nx/elf/feedingfrenzy2_dev_opt_hdr_20261026.*`. `tools/check_switch_build.py`: all checks passed.
+
+## 1.0.0 (2026-10-26)
+
+The user: "set both nro version to 1.0.0 and author is ChanseyIsTheBest. compile both with logging off and with LTO
+enabled like peggle 2 or bejeweled 3 ... we don't need PGO. then upload both to github and also make web installer for
+both games".
+
+- **The NRO:** version 1.0.0, author ChanseyIsTheBest, the icon `out/icon.jpg` (the user's art, 256x256; not committed),
+  logging off (the built-in settings; only a crash writes `logs/rex/rex_crash.log`), link-time optimisation on, no
+  profile-guided optimisation (`build_switch.ps1 -Pgo none -Define "FEEDINGFRENZY2_SWITCH_LTO=ON"`). NRO `d3caf767...`;
+  `tools/check_switch_build.py`: all checks passed.
+- **Ryujinx** (`rel*`): the release NRO with the game pack the installer page made (`test/package_node.mjs` of the
+  installer, the same code as the page): splash, menus and play at 60 FPS once the first start's shader compiling is
+  over.
+- **Published:** https://github.com/ChanseyIsTheBest/feedingfrenzy2-nx (release v1.0.0 with `feedingfrenzy2.nro`) and the installer page
+  https://chanseyisthebest.github.io/feedingfrenzy2-nx-installer/ (repository feedingfrenzy2-nx-installer, made from bejeweled3-nx-installer
+  without its shader step: the game compiles all of its 26 shaders at run time and the NRO carries them). The
+  installer's game pack is the tested one byte for byte apart from the pack id (a per-build nonce).
