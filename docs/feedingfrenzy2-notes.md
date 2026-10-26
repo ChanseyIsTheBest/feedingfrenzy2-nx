@@ -196,3 +196,12 @@ peggle 2".
 - Delivered: the NRO `4fc8e5e6...` (the optimised build with the new file) in
   `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`, README.txt updated; ELF and map
   `out/nx/elf/feedingfrenzy2_dev_opt_mp_20261026.*`.
+
+## The toml headers (2026-10-26)
+
+The user: "fix the header on both feeding frenzy 1 and 2 if they need to be fixed". The headers copied from
+bejeweled3-nx still named Bejeweled 3: the code generator's manifest (with Bejeweled 3's title id 584111D6 and its
+default.xex facts), the built-in Switch settings and the speed options. Each now names Feeding Frenzy 2, the manifest
+with this game's default.xex (title 5841088C, entry 0x821633B0, image 0x00570000, XDK 6534, FeedingFrenzy2.exe 0.0.1.2).
+The player's file was already fixed with the controller section. Comments only: the generated code is the same.
+- Delivered: the rebuilt NRO (`54a8cded...`: the same code, the new built-in files) in `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`; ELF and map `out/nx/elf/feedingfrenzy2_dev_opt_hdr_20261026.*`. `tools/check_switch_build.py`: all checks passed.

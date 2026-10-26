@@ -1,12 +1,12 @@
-# ReXGlue recompilation manifest for Bejeweled 3 (Xbox Live Arcade, title 584111D6, default.xex).
+# ReXGlue recompilation manifest for Feeding Frenzy 2: Shipwreck Showdown (Xbox Live Arcade, title 5841088C, default.xex).
 #
 # Run tools/codegen.ps1 (Windows): it calls `rexglue codegen feedingfrenzy2_manifest.toml` and the post-codegen steps. The
 # project name sets the prefix of everything generated: generated/default/feedingfrenzy2_{init,pch,funcs}.h,
 # feedingfrenzy2_recomp.N.cpp, and the CMake target feedingfrenzy2_recomp built by CMakeLists.txt.
 #
-# default.xex (tools/xex_info.py, 2026-10-21): image base 0x82000000, entry point 0x822EC320, image size 0x01000000,
-# XDK 2.0.20764 (LINK / C1 / C2 16.0.11886), original PE name default.exe, version 0.0.0.1. It imports only xam.xex
-# and xboxkrnl.exe; the game has no other code module. No title update or DLC exists for it.
+# default.xex (tools/xex_info.py, 2026-10-26): image base 0x82000000, entry point 0x821633B0, image size 0x00570000,
+# XDK 2.0.6534, original PE name FeedingFrenzy2.exe, version 0.0.1.2. It imports only xam.xex and xboxkrnl.exe;
+# the game has no other code module. The user's package has no title update or DLC.
 
 [project]
 name = "feedingfrenzy2"

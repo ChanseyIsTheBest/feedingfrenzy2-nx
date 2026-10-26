@@ -1,4 +1,4 @@
-# Bejeweled 3 (Xbox Live Arcade) for the Nintendo Switch: the settings built into the NRO (src/feedingfrenzy2_app.h
+# Feeding Frenzy 2 (Xbox Live Arcade) for the Nintendo Switch: the settings built into the NRO (src/feedingfrenzy2_app.h
 # BuiltInConfig). The SD card's feedingfrenzy2.toml is applied after these and may override any of them.
 #
 # bejeweled3-nx (2026-10-21): peggle1-nx's file as its 1.0.1 shipped it. Every enhancement of
