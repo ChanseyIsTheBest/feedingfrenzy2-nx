@@ -604,7 +604,7 @@ if(REXGLUE_PLATFORM_SWITCH)
         set(_feedingfrenzy2_icon ICON "${CMAKE_CURRENT_SOURCE_DIR}/../out/icon_dev.jpg")
     endif()
     rexglue_switch_add_nro(feedingfrenzy2
-        NAME "Feeding Frenzy"
+        NAME "Feeding Frenzy 2"
         AUTHOR "ChanseyIsTheBest"
         VERSION "${FEEDINGFRENZY2_VERSION}"
         ${_feedingfrenzy2_icon})

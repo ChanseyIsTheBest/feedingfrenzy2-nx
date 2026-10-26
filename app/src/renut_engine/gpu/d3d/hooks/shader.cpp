@@ -240,9 +240,7 @@ u32 CreateShaderRecord(const be_u32 *function, bool pixel) {
     return 0;
   const auto *container = reinterpret_cast<const uint8_t *>(function);
   const auto *header = reinterpret_cast<const d3d::ShaderContainer *>(container);
-  // feedingfrenzy-nx (2026-10-26): version 0x0E too (XDK 2571's run-time shader compiler); the translator reads it
-  // through XenosRecomp/container_0e.h, and only the sizes are read here.
-  if ((u32(header->flags) & 0xFFFFFF00u) != 0x102A1100u && (u32(header->flags) & 0xFFFFFF00u) != 0x102A0E00u) {
+  if ((u32(header->flags) & 0xFFFFFF00u) != 0x102A1100u) {
     RGPU_ERROR("Create{}Shader: not a shader container (flags {:08X})", pixel ? "Pixel" : "Vertex",
                u32(header->flags));
     return 0;
@@ -257,7 +255,6 @@ u32 CreateShaderRecord(const be_u32 *function, bool pixel) {
   shader->x360.resource.ReferenceCount = 1u;
 
   shader->hash = HashShaderContainer(container);
-  shader->function.assign(container, container + u32(header->virtualSize) + u32(header->physicalSize));
   shader->entry = FindShaderEntry(shader->hash);
   if (!shader->entry)
     CaptureMissingShader(container, pixel, shader->hash);
@@ -279,7 +276,7 @@ void RegisterGuestShader(u32 shader_va, u32 physical_va, bool pixel) {
   const u32 flags = header->flags;
   const u32 virtual_size = header->virtualSize;
   const u32 physical_size = header->physicalSize;
-  if (((flags & 0xFFFFFF00u) != 0x102A1100u && (flags & 0xFFFFFF00u) != 0x102A0E00u) || ((flags & 1) != 0) == pixel ||
+  if ((flags & 0xFFFFFF00u) != 0x102A1100u || ((flags & 1) != 0) == pixel ||
       virtual_size < sizeof(d3d::ShaderContainer) || virtual_size > 0x10000 ||
       physical_size == 0 || physical_size > 0x100000) {
     RGPU_ERROR("XGRegister{}Shader {:08X}: no shader container at {:08X} (flags {:08X})",
@@ -311,29 +308,6 @@ void RegisterGuestShader(u32 shader_va, u32 physical_va, bool pixel) {
     shader->entry = FindShaderEntry(hash);
     PipelineShaderLoaded(shader->entry);
   });
-}
-
-// bejeweled3-nx (2026-10-22): void D3DPixelShader_GetFunction(D3DPixelShader*, void *pData, UINT *pSizeOfData)
-// (sub_823064F8) and D3DVertexShader_GetFunction (sub_82306550). D3DX's effect code (sub_826C0018 / sub_826BFED0)
-// asks a shader for its function twice: the size first (pData NULL), then the bytes, the container's virtual part
-// (+0x28 / +0x368, its size at container +4) and the physical part (the pointer at +0x18 / +0x20, its size at container
-// +8). A shader this renderer created is its record, which has none of those fields: the guest copied from garbage
-// (the first Renut run with a fixed random seed: XMemCpy, sub_825F81E0, wrote to the unmapped 0x5ADA0070). The record
-// keeps its container (CreateShaderRecord), and these give it back; shaders the game set up in place
-// (XGRegister*Shader) have the real fields, so the original handles them.
-bool GetShaderFunction(PPCContext &ctx, uint8_t *base, RecordKind kind) {
-  auto *shader = FindRecord<ShaderRecord>(ctx.r3.u32, kind);
-  if (!shader)
-    return false;
-  const u32 data = ctx.r4.u32, size_out = ctx.r5.u32;
-  const u32 size = u32(shader->function.size());
-  if (!data) {
-    if (size_out)
-      *reinterpret_cast<be_u32 *>(base + size_out) = size;
-  } else if (size) {
-    std::memcpy(base + data, shader->function.data(), size);
-  }
-  return true;
 }
 
 // void XGRegisterVertexShader(D3DVertexShader *pShader, void *pPhysicalPart) [0x8264E7B8]
@@ -455,22 +429,9 @@ void D3DVertexShader_Bind_hook(u32 shader_va, u32 /*flags*/, u32 declaration_va,
 
 } // namespace
 
-BANJO_RENUT_HOOK(sub_820B74D0, D3DDevice_CreateVertexShader_hook);  // D3DDevice_CreateVertexShader  // feedingfrenzy-nx: (container) -> shader; 592-byte header
-BANJO_RENUT_HOOK(sub_820B73E8, D3DDevice_CreatePixelShader_hook);  // D3DDevice_CreatePixelShader  // feedingfrenzy-nx: (container) -> shader; 56-byte header
-BANJO_RENUT_HOOK(sub_820B6180, D3DDevice_CreateVertexDeclaration_hook);  // D3DDevice_CreateVertexDeclaration  // feedingfrenzy-nx: (elements) -> declaration; called once
-#if 0  // bejeweled3-nx: N&B sub_82657048 (D3DVertexShader_Bind) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_8244F6E0, D3DVertexShader_Bind_hook);  // D3DVertexShader_Bind  // N&B sub_82657048
-#endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, XGRegisterVertexShader_hook);  // XGRegisterVertexShader  // N&B sub_8264E7B8
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, XGRegisterPixelShader_hook);  // XGRegisterPixelShader  // N&B sub_8264E670
-#if 0  // feedingfrenzy-nx: Feeding Frenzy never calls the shaders' GetFunction (out/ff_d3d_api.txt)
-// bejeweled3-nx (2026-10-22): the shaders' GetFunction (GetShaderFunction above); not hooked in banjo-nx's tree.
-BANJO_RENUT_HOOK_RAW(sub_823064F8) {  // D3DPixelShader_GetFunction
-  if (!GetShaderFunction(ctx, base, renut::gpu::RecordKind::PixelShader))
-    __imp__sub_823064F8(ctx, base);
-}
-BANJO_RENUT_HOOK_RAW(sub_82306550) {  // D3DVertexShader_GetFunction
-  if (!GetShaderFunction(ctx, base, renut::gpu::RecordKind::VertexShader))
-    __imp__sub_82306550(ctx, base);
-}
-#endif
+BANJO_RENUT_HOOK(sub_8216CBE0, D3DDevice_CreateVertexShader_hook);  // D3DDevice_CreateVertexShader  // feedingfrenzy2-nx: sig 1.00; trace (container 0x102A1101) (Peggle 1 sub_8242F860, N&B sub_8264E8B0)
+BANJO_RENUT_HOOK(sub_8216CAD0, D3DDevice_CreatePixelShader_hook);  // D3DDevice_CreatePixelShader  // feedingfrenzy2-nx: sig 0.79; trace (container 0x102A1100) (Peggle 1 sub_8242F6E8, N&B sub_8264E6A8)
+BANJO_RENUT_HOOK(sub_8216B678, D3DDevice_CreateVertexDeclaration_hook);  // D3DDevice_CreateVertexDeclaration  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_8242CE20, N&B sub_8264EA90)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DVertexShader_Bind_hook);  // D3DVertexShader_Bind  // Peggle 1 sub_8244F6E0, N&B sub_82657048
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, XGRegisterVertexShader_hook);  // XGRegisterVertexShader  // Peggle 1 sub_8242C9C0, N&B sub_8264E7B8
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, XGRegisterPixelShader_hook);  // XGRegisterPixelShader  // Peggle 1 sub_8242C780, N&B sub_8264E670

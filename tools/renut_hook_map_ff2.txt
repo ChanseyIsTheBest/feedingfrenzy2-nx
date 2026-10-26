@@ -1,0 +1,92 @@
+# feedingfrenzy2-nx (2026-10-26): Renut's hooks (Peggle 1's table, app/src/renut_engine/gpu/d3d/hooks/*.cpp) at
+# Feeding Frenzy 2's addresses, read by tools/renut_hook_remap_ff2.py. One line per hook: Renut's name, Feeding Frenzy
+# 2's address, the evidence. The render and sampler state functions are not listed: they come pair by pair from the two
+# games' state tables (out/renut_map/state_tables.txt: Peggle 1's 0x82F85848 / 0x82F85D08, this game's 0x824F7608 /
+# 0x824F7AC8, the same 101 / 20 defaults). Hooks not listed and not in the tables are commented out.
+#
+# Evidence: "sig" = tools' field signature (r3-relative loads and stores with their widths, immediates, calls, imports,
+# size; 1.00 = the same set) against Peggle 1's function; "trace" = the PC trace (feedingfrenzy2_d3d_trace.cpp,
+# out/renut_map/trace1.txt: device 0x4001A480); "args" = the entry's argument registers read the same way as Peggle 1's.
+#
+# Device and its queries
+D3DDevice_AddRef                       8217D058  sig 1.00
+D3DDevice_AcquireThreadOwnership       8217D2E0  owner +10888 = GetCurrentThreadId sub_82208CE0 under the device's critical section
+D3DDevice_ReleaseThreadOwnership       8217D248  BlockUntilIdle, then owner +10888 replaced, flag 2 at +10942 set
+D3DDevice_GetDeviceCaps                8217AFB0  sig 1.00; copies 304 bytes from 0x82019180
+Direct3D_CreateDevice                  8217D478  sig 0.83 (match 0.93); trace (0, 1, 0, 0, params, &out) once
+D3DDevice_Release                      8217D1F0  sig 1.00
+D3D_XenonGpu_Initialize                8217FFA8  sig 0.98
+D3D_InitializeApiState                 821801C0  sig 0.97; calls every state setter of the tables
+D3D_CDevice_KickOff                    82176B90  sig 1.00; trace (dev, ...) from Present and the game
+D3D_CDevice_AllocateInlineData         82175F20  sig 1.00
+D3D_RingBufferDeviceAllocate           82175D18  sig 0.95
+D3DDevice_SetRingBufferParameters      82176E88  sig 0.99
+D3DDevice_Swap                         8217E538  the only VdSwap caller; Present ends with it
+D3D_CBlocker_Check                     8217D118  sig 1.00
+D3DDevice_BlockUntilIdle               82176E10  sig 0.99
+D3DDevice_SetScreenExtentQueryMode     8217B010  sig 1.00
+D3DDevice_UnsetAll                     8217D368  sig 1.00
+# Draw, clear, resolve, present
+D3DDevice_DrawVertices                 8220C018  sig 0.97 (the second D3D block, 0x8220BB30-0x8220C858)
+D3DDevice_DrawIndexedVertices          8220C400  sig 0.96
+D3DDevice_DrawVerticesUP               8220BFD0  sig 1.00; BeginVertices, memcpy, m_pRing = [+13444]
+D3DDevice_BeginVertices                8220BB30  sig 0.96
+D3DDevice_ClearF                       82171128  sig 1.00; trace (dev, 0x3F, rect, color ptr, ...)
+D3DDevice_Clear                        82171250  sig 1.00; trace (dev, 0, 0, 0x3F, 0xFF000000) calls ClearF
+D3DDevice_Resolve                      821799E0  sig 0.71; trace (dev, 0, 0, texture, ...) from Present and the game
+D3DDevice_Present                      8217EAD0  the frame hook's address (shared)
+D3DDevice_SetVertexShader              8216B3A0  sig 1.00
+D3DDevice_SetPixelShader               8216B0E8  sig 1.00
+# Resources
+D3DDevice_CreateSurface                82168F00  sig 0.99; trace (0x500, 0x2D0, format, ...)
+D3DResource_Destroy                    82174970  sig 0.81; reads the VdGlobalDevice slot and the HiZ owner as Peggle 1's
+D3D_UnlockResource                     82174D90  sig 0.97
+D3DVertexBuffer_Unlock                 82175100  sig 1.00
+D3DSurface_UnlockRect                  82167208  sig 1.00
+D3DVertexBuffer_Lock                   821750B0  sig 1.00; trace (vb, 0, 0, 0x1000): the offset is the caller's, as Peggle 1's
+D3DLineTexture_LockRect                82168C50  args: (texture, level, locked, rect, flags), as Peggle 1's 0x82428A10
+D3DSurface_LockRect                    821690C0  args: (surface, locked, rect, flags), as Peggle 1's 0x824290C0
+D3DVolume_LockBox                      82169128  sig 1.00
+D3DResource_AddRef                     82174EA0  sig 1.00
+D3DResource_Release                    82174F18  sig 1.00
+D3DResource_GetType                    821748E0  sig 1.00
+D3DSurface_GetDesc                     82169028  sig 1.00
+D3DVolume_GetDesc                      821690E0  sig 1.00
+D3D_Get2DSurfaceDesc                   82167D60  sig 1.00 (before Get3DSurfaceDesc, as in Peggle 1)
+D3D_Get2DSurfaceDesc_Thunk             82168D20  `b 0x82167D60`; trace (texture, level, desc) 411 calls
+D3D_Get3DSurfaceDesc                   82167E60  sig 1.00
+D3D_Get3DSurfaceDesc_Thunk             82168D28  `b 0x82167E60`
+D3DBaseTexture_GetLevelCount           82168B88  sig 1.00
+D3DArrayTexture_UnlockRect             821671F0  sig 1.00; trace (texture, level) after each LockRect
+D3DTexture_GetSurfaceLevel             82168B98  sig 1.00
+D3DCubeTexture_GetCubeMapSurface       82168C68  sig 0.99
+D3DVolumeTexture_GetVolumeLevel        82168D30  sig 1.00
+D3DDevice_CreateVertexBuffer           82174FE8  sig 1.00; trace (0x400000, 8, 0) once
+D3DDevice_CreateTexture                82168DE0  sig 1.00; trace (width, height, levels, usage, format, ...)
+# Shaders
+D3DDevice_CreateVertexShader           8216CBE0  sig 1.00; trace (container 0x102A1101)
+D3DDevice_CreatePixelShader            8216CAD0  sig 0.79; trace (container 0x102A1100)
+D3DDevice_CreateVertexDeclaration      8216B678  sig 1.00
+# State (besides the tables)
+D3DDevice_SetTexture                   82169148  sig 0.97; trace (dev, sampler, texture, mask)
+D3DDevice_SetStreamSource              82173A28  sig 0.97; trace (dev, 0, vb, offset, stride 0x24)
+D3DDevice_SetIndices                   82173B48  sig 1.00
+D3DDevice_SetVertexDeclaration         8216B570  sig 1.00
+D3DDevice_SetViewport                  82174160  sig 0.99
+D3D_SetViewport                        82173EE8  sig 1.00
+D3DDevice_SetScissorRect               82173928  sig 1.00
+D3D_SetSurfaceClip                     82171310  sig 0.99
+D3DDevice_SetRenderTarget              82174298  sig 0.94
+D3DDevice_SetRenderTarget_Thunk        821748D8  `b 0x82174298`; trace (dev, 0, surface)
+D3DDevice_SetDepthStencilSurface       82174600  sig 1.00
+D3D_SetSurfaceInfo                     82174200  sig 0.85; reads the full viewport 0x82018DD0
+D3DDevice_SetPredication               82182240  sig 1.00
+D3DDevice_SetShaderGPRAllocation       8216B700  sig 1.00
+D3D_CleanupGprAllocationSetup          8216AAA8  sig 1.00
+D3D_ResetAllState                      82173DF0  sig 1.00
+D3DDevice_GetRenderTarget              82173BD8  sig 1.00
+D3DDevice_GetDepthStencilSurface       82173C20  sig 1.00
+D3DDevice_SetVertexShaderConstantB     8216AF28  sig 1.00 (before the pixel one, as in Peggle 1)
+D3DDevice_SetPixelShaderConstantB      8216AF88  sig 1.00
+D3DDevice_SetVertexShaderConstantI     8216AFE8  sig 1.00
+D3DDevice_SetPixelShaderConstantI      8216B040  sig 1.00

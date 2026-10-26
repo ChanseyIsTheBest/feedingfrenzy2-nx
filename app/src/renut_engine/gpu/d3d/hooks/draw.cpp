@@ -49,10 +49,9 @@ namespace {
 constexpr u32 kE_OUTOFMEMORY = 0x8007000Eu;
 // D3DVIEWPORT9 {0, 0, 0xFFFF, 0xFFFF, 0.0, 1.0} in N&B's data (unk_820018DC):
 // the whole surface.
-// bejeweled3-nx: 0x82001284 (SetSurfaceInfo sub_822F3500 `lis r10,-32256; addi r4,r10,4740` where Peggle 2's
-// sub_8261ADB0 has 0x8207A610); its 24 bytes are the same (0, 0, 0xFFFF, 0xFFFF, 0.0, 1.0).
-// feedingfrenzy-nx (2026-10-26): D3D's full viewport {0, 0, 0xFFFF, 0xFFFF, 0.0, 1.0} (Bejeweled 3's 0x82001284);
-// XDK 2571 has no such constant, so its values are passed directly (SetFullViewport).
+// feedingfrenzy2-nx (2026-10-26): 0x82018DD0 (D3D_SetSurfaceInfo sub_82174200 reads 0x82018DE8 and 0x82018DD0 where
+// Peggle 1's reads 0x8206FEE0 and 0x8206FEC8): {0, 0, 0xFFFF, 0xFFFF, 0.0, 1.0}, as Peggle 1's.
+constexpr u32 kFullViewport = 0x82018DD0;  // peggle1-nx: 0x8206FEC8 (N&B 0x820018DC, Peggle 2 0x8207A610)
 // D3DRS_HIZWRITEENABLE's index in the render state table.
 constexpr u32 kRenderStateHiZWriteEnable = 97;
 
@@ -373,7 +372,7 @@ void D3DDevice_BeginTiling_hook(u32 device, u32 /*flags*/, u32 count, u32 rects_
   }
   d.SetW(native::off::TilingExtent, extent_x);
   d.SetW(native::off::TilingExtent + 4, extent_y);
-  d.SetW(0x34E4, 0);
+  d.SetW(0x3384, 0);
 
   if (!(d.B(native::off::Flags3) & 0x20)) {
     // The largest tile, from its origin: its clear covers a tile of EDRAM.
@@ -386,11 +385,11 @@ void D3DDevice_BeginTiling_hook(u32 device, u32 /*flags*/, u32 count, u32 rects_
     // after the clear.
     float viewport[6];
     for (u32 i = 0; i < 6; ++i)
-      viewport[i] = d.F(0x32C8 + i * 4);
+      viewport[i] = d.F(0x3168 + i * 4);
     i32 scissor[4];
     for (u32 i = 0; i < 4; ++i)
       scissor[i] = i32(d.W(native::off::ScissorRect + i * 4));
-    native::SetViewport(d, 0.0f, 0.0f, 65535.0f, 65535.0f, 0.0f, 1.0f);
+    native::SetViewport(d, kFullViewport);
     native::SetScissorRect(d, 0, 0, 0xFFFF, 0xFFFF);  // dword_82001190
     const ClearRect rect{0, 0, i32(width), i32(height)};
     float color[4] = {0, 0, 0, 0};
@@ -402,17 +401,17 @@ void D3DDevice_BeginTiling_hook(u32 device, u32 /*flags*/, u32 count, u32 rects_
     native::SetScissorRect(d, scissor[0], scissor[1], scissor[2], scissor[3]);
   }
   if (const auto *color = color_va ? GuestPtr<const u8>(color_va) : nullptr)
-    std::memcpy(d.bytes + 0x34F0, color, 16);
+    std::memcpy(d.bytes + 0x3390, color, 16);
   else
-    std::memset(d.bytes + 0x34F0, 0, 16);
-  d.SetF(0x3500, 0.0f);  // flt_82000D18
-  d.SetW(0x3504, 0);
+    std::memset(d.bytes + 0x3390, 0, 16);
+  d.SetF(0x33A0, 0.0f);  // flt_82000D18
+  d.SetW(0x33A4, 0);
 
   const u32 target = d.W(native::off::RenderTargets);
-  d.SetW(0x3314, target ? target : d.W(native::off::DepthStencil));
+  d.SetW(0x31B4, target ? target : d.W(native::off::DepthStencil));
   for (u32 i = 0; i < 5; ++i)  // the 4 targets, then depth
     d.SetW(native::off::TilingSurfaces + i * 4, d.W(native::off::RenderTargets + i * 4));
-  d.SetW(0x3310, 2);
+  d.SetW(0x31B0, 2);
   d.SetB(native::off::Flags, d.B(native::off::Flags) | 0x20);
   d.SetW(native::off::PredicationSet, 0);
   native::UpdateTilePredicated(d);
@@ -422,7 +421,7 @@ void D3DDevice_BeginTiling_hook(u32 device, u32 /*flags*/, u32 count, u32 rects_
   d.SetW(native::off::RunPredication, 0);
   // The tiles' commands go into a ring segment of their own from a KickOff.
   native::KickOff(device);
-  native::SetViewport(d, 0.0f, 0.0f, 65535.0f, 65535.0f, 0.0f, 1.0f);
+  native::SetViewport(d, kFullViewport);
   native::ResetAllState(d);
 }
 
@@ -448,7 +447,7 @@ u32 D3DDevice_EndTiling_hook(u32 device, u32 /*resolve_flags*/, u32 /*rects_va*/
       const u32 tile = native::off::TileRects + i * 16;
       ClearRect rect{i32(d.W(tile)), i32(d.W(tile + 4)), i32(d.W(tile + 8)), i32(d.W(tile + 12))};
       // A tile at the surface's edge resolves to a multiple of 8.
-      const u32 surface = d.W(0x3314);
+      const u32 surface = d.W(0x31B4);
       const auto *s = surface ? GuestPtr<const be_u32>(surface) : nullptr;
       const u32 size = s ? u32(s[9]) : 0;
       if (u32(rect.x2) == (size >> 18) + 1)
@@ -460,8 +459,8 @@ u32 D3DDevice_EndTiling_hook(u32 device, u32 /*resolve_flags*/, u32 /*rects_va*/
                              (d.B(native::off::Flags3) & 0x20) ? 0 : 2);
       const i32 dest_x = i32(d.W(tile)), dest_y = i32(d.W(tile + 4));
       if (i + 1 < count) {
-        Resolve(device, 0x300, &rect, dest_texture, dest_x, dest_y, 0, 0, device + 0x34F0,
-                d.F(0x3500), d.W(0x3504), 0);
+        Resolve(device, 0x300, &rect, dest_texture, dest_x, dest_y, 0, 0, device + 0x3390,
+                d.F(0x33A0), d.W(0x33A4), 0);
       } else {
         Resolve(device, 0x300, &rect, dest_texture, dest_x, dest_y, 0, 0, color_va,
                 1.0f /*flt_82000D0C*/, 0, 0);
@@ -479,7 +478,7 @@ u32 D3DDevice_EndTiling_hook(u32 device, u32 /*resolve_flags*/, u32 /*rects_va*/
 
   d.SetB(native::off::Flags3, d.B(native::off::Flags3) & 0xCF);
   d.SetB(native::off::Flags, d.B(native::off::Flags) & 0xDF);
-  d.SetW(0x3314, 0);
+  d.SetW(0x31B4, 0);
   d.SetW(native::off::PredicationSet, 0);
   native::UpdateTilePredicated(d);
   d.SetW(native::off::RunPredicationState, 0);
@@ -495,7 +494,7 @@ u32 D3DDevice_EndTiling_hook(u32 device, u32 /*resolve_flags*/, u32 /*rects_va*/
   } else {
     native::SetFence(device);
   }
-  native::SetViewport(d, 0.0f, 0.0f, 65535.0f, 65535.0f, 0.0f, 1.0f);
+  native::SetViewport(d, kFullViewport);
 
   if (!IsRecordingCommandBuffer(device)) {
     render_thread::Queue([] {
@@ -534,7 +533,7 @@ void D3DDevice_Present_hook(u32 device) {
   FlushDeferredVertices(device);
   float viewport[6];
   for (u32 i = 0; i < 6; ++i)
-    viewport[i] = d.F(0x32C8 + i * 4);
+    viewport[i] = d.F(0x3168 + i * 4);
   i32 scissor[4];
   for (u32 i = 0; i < 4; ++i)
     scissor[i] = i32(d.W(native::off::ScissorRect + i * 4));
@@ -550,7 +549,7 @@ void D3DDevice_Present_hook(u32 device) {
   native::SetViewport(d, viewport[0], viewport[1], viewport[2], viewport[3], viewport[4],
                       viewport[5]);
   native::SetScissorRect(d, scissor[0], scissor[1], scissor[2], scissor[3]);
-  native::Swap(device, front_buffer, device + 0x36CC);
+  native::Swap(device, front_buffer, device + 0x3548);
 }
 
 // void D3DDevice_SetVertexShader(D3DDevice*, D3DVertexShader*) [0x8222A0A8]
@@ -565,34 +564,21 @@ void D3DDevice_SetPixelShader_hook(u32 device, u32 shader) {
 
 } // namespace
 
-BANJO_RENUT_HOOK(sub_820B4118, D3DDevice_DrawVertices_hook);  // D3DDevice_DrawVertices  // feedingfrenzy-nx: (dev, 6 = triangle strip, 0, 4): each sprite
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_DrawIndexedVertices_hook);  // D3DDevice_DrawIndexedVertices  // N&B sub_826567C8
-#if 0  // bejeweled3-nx: N&B sub_82230838 (D3DDevice_DrawIndexedTessellatedVertices) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_8243C578, D3DDevice_DrawIndexedTessellatedVertices_hook);  // D3DDevice_DrawIndexedTessellatedVertices  // N&B sub_82230838
-#endif
-#if 0  // bejeweled3-nx: N&B sub_8222E520 (D3DDevice_DrawVerticesUP) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_8243B2A0, D3DDevice_DrawVerticesUP_hook);  // D3DDevice_DrawVerticesUP  // N&B sub_8222E520
-#endif
-#if 0  // bejeweled3-nx: N&B sub_82656728 (D3DDevice_DrawIndexedVerticesUP) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_8243B818, D3DDevice_DrawIndexedVerticesUP_hook);  // D3DDevice_DrawIndexedVerticesUP  // N&B sub_82656728
-#endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BeginVertices_hook);  // D3DDevice_BeginVertices  // N&B sub_8222CC50
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_ClearF_hook);  // D3DDevice_ClearF  // N&B sub_822811A0
-BANJO_RENUT_HOOK(sub_820B2428, D3DDevice_Clear_hook);  // D3DDevice_Clear  // feedingfrenzy-nx: once a frame; (dev, count, rects, flags, color, z in f1, -, stencil in r9)
+BANJO_RENUT_HOOK(sub_8220C018, D3DDevice_DrawVertices_hook);  // D3DDevice_DrawVertices  // feedingfrenzy2-nx: sig 0.97 (the second D3D block, 0x8220BB30-0x8220C858) (Peggle 1 sub_8243B8B8, N&B sub_8222C7A0)
+BANJO_RENUT_HOOK(sub_8220C400, D3DDevice_DrawIndexedVertices_hook);  // D3DDevice_DrawIndexedVertices  // feedingfrenzy2-nx: sig 0.96 (Peggle 1 sub_8243BCA8, N&B sub_826567C8)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_DrawIndexedTessellatedVertices_hook);  // D3DDevice_DrawIndexedTessellatedVertices  // Peggle 1 sub_8243C578, N&B sub_82230838
+BANJO_RENUT_HOOK(sub_8220BFD0, D3DDevice_DrawVerticesUP_hook);  // D3DDevice_DrawVerticesUP  // feedingfrenzy2-nx: sig 1.00; BeginVertices, memcpy, m_pRing = [+13444] (Peggle 1 sub_8243B2A0, N&B sub_8222E520)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_DrawIndexedVerticesUP_hook);  // D3DDevice_DrawIndexedVerticesUP  // Peggle 1 sub_8243B818, N&B sub_82656728
+BANJO_RENUT_HOOK(sub_8220BB30, D3DDevice_BeginVertices_hook);  // D3DDevice_BeginVertices  // feedingfrenzy2-nx: sig 0.96 (Peggle 1 sub_8243ADF8, N&B sub_8222CC50)
+BANJO_RENUT_HOOK(sub_82171128, D3DDevice_ClearF_hook);  // D3DDevice_ClearF  // feedingfrenzy2-nx: sig 1.00; trace (dev, 0x3F, rect, color ptr, ...) (Peggle 1 sub_82439328, N&B sub_822811A0)
+BANJO_RENUT_HOOK(sub_82171250, D3DDevice_Clear_hook);  // D3DDevice_Clear  // feedingfrenzy2-nx: sig 1.00; trace (dev, 0, 0, 0x3F, 0xFF000000) calls ClearF (Peggle 1 sub_82439450, N&B sub_822812C8)
 // peggle1-nx: Peggle 1's D3DDevice_Resolve has N&B's signature and the game calls it directly (Peggle 2's was a
 // wrapper around an internal resolve with two more arguments).
-// bejeweled3-nx: Bejeweled 3's is Peggle 2's again: the public D3DDevice_Resolve, N&B's signature, is the 19-insn
-// wrapper sub_82301020 (the game, Present and sub_8230C2D0 call it), which calls the internal resolve sub_822FFEC8
-// with two more arguments (r6 = r7 = 0, the destination texture moved to r8). The hook sits on the wrapper.
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_Resolve_hook);  // D3DDevice_Resolve  // N&B sub_8222D6C8
-#if 0  // bejeweled3-nx: N&B sub_822788A0 (D3DDevice_BeginTiling) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_82439A88, D3DDevice_BeginTiling_hook);  // D3DDevice_BeginTiling  // N&B sub_822788A0
-#endif
-#if 0  // bejeweled3-nx: N&B sub_82212328 (D3DDevice_EndTiling) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_8243A128, D3DDevice_EndTiling_hook);  // D3DDevice_EndTiling  // N&B sub_82212328
-#endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BeginExport_hook);  // D3DDevice_BeginExport  // N&B sub_82269618
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_EndExport_hook);  // D3DDevice_EndExport  // N&B sub_822693B0
-BANJO_RENUT_HOOK_SHARED(sub_820B17B0, D3DDevice_Present_hook);  // D3DDevice_Present  // feedingfrenzy-nx: once a frame; calls Swap sub_820B1260 (the only VdSwap caller)
-BANJO_RENUT_HOOK(sub_820B6158, D3DDevice_SetVertexShader_hook);  // D3DDevice_SetVertexShader  // feedingfrenzy-nx: (dev, shader): stw +13364; b 0x820B6008
-BANJO_RENUT_HOOK(sub_820B5E18, D3DDevice_SetPixelShader_hook);  // D3DDevice_SetPixelShader  // feedingfrenzy-nx: (dev, shader): +12712, then the shader+56 literal constants
+BANJO_RENUT_HOOK(sub_821799E0, D3DDevice_Resolve_hook);  // D3DDevice_Resolve  // feedingfrenzy2-nx: sig 0.71; trace (dev, 0, 0, texture, ...) from Present and the game (Peggle 1 sub_8243D640, N&B sub_8222D6C8)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BeginTiling_hook);  // D3DDevice_BeginTiling  // Peggle 1 sub_82439A88, N&B sub_822788A0
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_EndTiling_hook);  // D3DDevice_EndTiling  // Peggle 1 sub_8243A128, N&B sub_82212328
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BeginExport_hook);  // D3DDevice_BeginExport  // Peggle 1 sub_824421F8, N&B sub_82269618
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_EndExport_hook);  // D3DDevice_EndExport  // Peggle 1 sub_82442300, N&B sub_822693B0
+BANJO_RENUT_HOOK_SHARED(sub_8217EAD0, D3DDevice_Present_hook);  // D3DDevice_Present  // feedingfrenzy2-nx: the frame hook's address (shared) (Peggle 1 sub_824436D8, N&B sub_82654778)
+BANJO_RENUT_HOOK(sub_8216B3A0, D3DDevice_SetVertexShader_hook);  // D3DDevice_SetVertexShader  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_8242CAB8, N&B sub_8222A0A8)
+BANJO_RENUT_HOOK(sub_8216B0E8, D3DDevice_SetPixelShader_hook);  // D3DDevice_SetPixelShader  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_8242C7B8, N&B sub_82226730)

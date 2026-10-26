@@ -42,7 +42,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # feedingfrenzy-nx (2026-10-26, the first Switch build): Feeding Frenzy's one, the CRT memcpy sub_822CD480 (XDK 2571's,
 # not Peggle 2's): three `b .` in the guest code (0x822CD644, 0x822CD774, 0x822CD884), each after a copy loop's
 # `bdnz` whose exit is the `bge` before it (the counter never runs out): a trap the CRT left in.
-KNOWN_HALTS = ['sub_822CD480']
+# feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's memcpy is Peggle 2's (no halt); its own list is filled from its
+# first Switch build.
+KNOWN_HALTS = []
 # Vector fused multiply-adds that come from the guest's OWN fused operations (fmadds -> std::fma), two of them paired
 # into one vector instruction by GCC (exact: each lane is the same fused operation). Checked in the disassembly:
 # fcvtl to double, fmla v.2d, fcvtn back, as double(float(std::fma(a, b, c))) twice.

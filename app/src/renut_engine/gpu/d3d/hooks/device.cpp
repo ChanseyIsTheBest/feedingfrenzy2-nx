@@ -63,10 +63,9 @@ extern "C" uint32_t RexSetGuestThreadCoreLayout(int main_core, uint32_t others_m
 using namespace renut::gpu;
 
 // Kernel exports the device code uses.
-// bejeweled3-nx: Bejeweled 3's GetCurrentThreadId is sub_825F8690 (lwz r11,256(r13); lwz r3,332(r11); blr: the same 3
-// insns as N&B sub_822402A8, Peggle 2 sub_8260BF88 and Peggle 1 sub_824639B0; AcquireThreadOwnership sub_822FEFA8 and
-// the CreateDevice part sub_82311428 call it at the aligned positions).
-REX_IMPORT(__imp__sub_822A5FA0, GuestGetCurrentThreadId, u32());  // feedingfrenzy-nx: GetCurrentThreadId sub_822A5FA0 (the same 3 instructions; N&B sub_822402A8)
+// feedingfrenzy2-nx (2026-10-26): GetCurrentThreadId is sub_82208CE0 (`lwz r11,256(r13); lwz r3,332(r11); blr`, as
+// Feeding Frenzy's and Bejeweled 3's).
+REX_IMPORT(__imp__sub_82208CE0, GuestGetCurrentThreadId, u32());  // peggle1-nx: sub_824639B0 (N&B sub_822402A8)
 REX_IMPORT(__imp__RtlInitializeCriticalSection, RtlInitializeCriticalSection, void(u32));
 REX_IMPORT(__imp__KeQueryPerformanceFrequency, KeQueryPerformanceFrequency, u32());
 REX_IMPORT(__imp__KeGetCurrentProcessType, KeGetCurrentProcessType, u32());
@@ -88,49 +87,38 @@ constexpr u32 kRingDataSize = 1u << 20;
 // offsets into the device allocation.
 // Byte whose 0x80 bit marks a device without GPU hardware (its device-type-2
 // path sets it); D3D's code skips hardware work for it.
-constexpr u32 kDeviceOffsetFlags = 11068;
+constexpr u32 kDeviceOffsetFlags = 10940;
 constexpr u8 kDeviceFlagNoHardware = 0x80;
 // Byte whose 0x2 bit makes CDevice::SetFence (0x82278528) write each fence's
 // completion value itself instead of waiting for the GPU to. The title device
 // runs without it once created: its fences complete on the render thread.
-constexpr u32 kDeviceOffsetFlags2 = 11069;
+constexpr u32 kDeviceOffsetFlags2 = 10941;
 constexpr u8 kDeviceFlagImmediateFences = 0x02;
 // Pointer to the completed-fence word IsFencePending / BlockOnFence read.
-constexpr u32 kDeviceOffsetFenceCompletion = 11024;
+constexpr u32 kDeviceOffsetFenceCompletion = 10896;
 // Nonzero while a KickOff is in progress (BlockOnFence does not kick then).
-constexpr u32 kDeviceOffsetInKickOff = 13584;
-// bejeweled3-nx: as Peggle 2 (XDK 21256), Bejeweled 3's InitializeHardwareDevice (sub_823119B0) gives the device a
-// 32-byte block at +11028 (`li r3,32; bl XMemAlloc; stw r3,11028(r31)`), which its interrupt, fence and present paths
-// read (sub_822F5000, sub_822F59F0, sub_822F6AE0, the callback writer sub_822F7898); SetRingBufferParameters
-// (sub_822F8568) only reads it. N&B's and Peggle 1's +10900 block was SetRingBufferParameters' own.
-constexpr u32 kDeviceOffsetHardwareBlock = 11028;
+constexpr u32 kDeviceOffsetInKickOff = 13232;
 // Side buffer (0x12C0 bytes) every device gets.
-constexpr u32 kDeviceOffsetSideBuffer = 17120;
+constexpr u32 kDeviceOffsetSideBuffer = 16728;
 constexpr u32 kSideBufferSize = 0x12C0;
 // Set to -1 by the device-type-2 path.
-constexpr u32 kDeviceOffsetsMinusOne[] = {21952, 21956, 15324};
+constexpr u32 kDeviceOffsetsMinusOne[] = {21560, 21564, 14936};
 constexpr u32 kDeviceTypeNoHardware = 2;
-// Copied from the global qword at 0x82AD07A0 (bejeweled3-nx: the CreateDevice part sub_82311428 `lis r11,-32083;
-// ld r11,1952(r11); std r11,11008(r3)`, as Peggle 2's sub_826292C0 with 0x828E0370; N&B 0x82F39B38). It holds the
-// XDK build: 0x00020000511C4000, 0x511C = 20764 (Peggle 2 21256, Peggle 1 7776, N&B 7645).
-constexpr u32 kDeviceOffsetGlobalQword = 11008;
-// feedingfrenzy-nx (2026-10-26): 0x822F20D8 holds 0x000200000A0B4001 (XDK 2.0.2571; `lis r11,-32209;
-// ld r11,8408(r11)` in the CreateDevice path).
-constexpr u32 kGlobalQwordVa = 0x822F20D8;
+// Copied from the global qword at 0x82F85E58 (N&B 0x82F39B38; it holds the XDK build: 7776, N&B 7645).
+constexpr u32 kDeviceOffsetGlobalQword = 10880;
+// feedingfrenzy2-nx (2026-10-26): 0x824F7BB8 holds 0x0002000019864001 (XDK 2.0.6534; `lis r11,-32177;
+// ld r11,31672(r11); std r11,10880(r31)` at 0x821808A4, the same field as Peggle 1's).
+constexpr u32 kGlobalQwordVa = 0x824F7BB8;  // peggle1-nx: 0x82F85E58
 // Hardware-path fields: two critical sections, QueryPerformanceFrequency and
 // its reciprocal as floats, and 41 words set to -1.
-constexpr u32 kDeviceOffsetCriticalSection0 = 15332;
-constexpr u32 kDeviceOffsetCriticalSection1 = 15360;
-constexpr u32 kDeviceOffsetPerfFrequency = 21980;
-constexpr u32 kDeviceOffsetTitleMinusOne = 23776;
+constexpr u32 kDeviceOffsetCriticalSection0 = 14944;
+constexpr u32 kDeviceOffsetCriticalSection1 = 14972;
+constexpr u32 kDeviceOffsetPerfFrequency = 21588;
+constexpr u32 kDeviceOffsetTitleMinusOne = 23380;
 // Import slot holding the address of the kernel's VdGlobalDevice variable.
-// bejeweled3-nx: 0x82000618, which the KeGetCurrentProcessType() != 2 paths load (InitializeHardwareDevice
-// sub_823119B0, GetDevice sub_822F90C8, LockResource sub_822F9FA0, Resource_Destroy sub_822F9B08, ...: 23
-// functions, aligned with Peggle 2's loads of 0x820008E0); in the image it holds 0xFFCAE000, the kernel's
-// VdGlobalDevice, as Peggle 2's does (0x82000614 holds 0xFFCAD000, VdGlobalXamDevice, for process type 2).
-// N&B 0x820007FC, Peggle 1 0x830B0CDC.
-// feedingfrenzy-nx (2026-10-26): 0x82000574, the image's only word holding 0xFFCAE000.
-constexpr u32 kVdGlobalDeviceImportSlot = 0x82000574;
+// feedingfrenzy2-nx (2026-10-26): 0x8200057C, the image's only word holding 0xFFCAE000; Resource_Destroy
+// (sub_82174970) loads it where Peggle 1's loads 0x830B0CDC.
+constexpr u32 kVdGlobalDeviceImportSlot = 0x8200057C;  // peggle1-nx: 0x830B0CDC (N&B 0x820007FC)
 
 constexpr u32 kE_OUTOFMEMORY = 0x8007000Eu;
 
@@ -184,7 +172,7 @@ bool FencePending(const u8 *bytes, u32 fence) {
 // D3D::XenonGpu_Initialize (0x82663208): the register image's power-on
 // values, everything dirty. (Its register writes go into the ring.)
 void XenonGpuInitialize(native::Device d) {
-  d.SetQ(0x2FC0, 0x00000000FFFFFFFFull);
+  d.SetQ(0x2E30, 0x00000000FFFFFFFFull);
   for (u32 i = 0; i < 26; ++i)  // texture fetch constants: type 0
     d.SetW(native::off::TextureFetch + i * 24, d.W(native::off::TextureFetch + i * 24) & ~3u);
   for (u32 i = 0; i < 18; ++i) {  // vertex fetch constants: type 1
@@ -208,37 +196,37 @@ void XenonGpuInitialize(native::Device d) {
   d.SetW(0x2A48, 2);
   for (u32 word = 0; word < 5; ++word)
     d.SetPending(word, ~u64(0));
-  d.SetW(0x2B24, 0xE);
+  d.SetW(0x2AA4, 0xE);
 }
 
 // D3D::InitializeApiState (0x826597C8).
 void InitializeApiState(native::Device d) {
-  const u32 present_interval = d.W(0x36A0);
-  const u32 behavior_flags2 = d.W(0x5F38);
+  const u32 present_interval = d.W(0x351C);
+  const u32 behavior_flags2 = d.W(0x5DAC);
   native::InitializeStateTables(d);
-  d.SetW(0x3100, 5);
-  d.SetW(0x3104, 1);
+  d.SetW(0x2FA0, 5);
+  d.SetW(0x2FA4, 1);
   native::SetScreenExtentQueryMode(d, 2);  // D3DSEQM_PRECLIP
-  d.SetW(0x31F0, 2);
-  d.SetW(0x3138, 0x2A23B9);
-  d.SetH(0x3134, 0);
-  d.SetH(0x3136, 0);
-  d.SetB(0x313C, 0);
-  d.SetB(0x313D, 0);
-  d.SetB(0x313E, 0);
-  d.SetW(0x3144, ~0u);
+  d.SetW(0x3090, 2);
+  d.SetW(0x2FD8, 0x2A23B9);
+  d.SetH(0x2FD4, 0);
+  d.SetH(0x2FD6, 0);
+  d.SetB(0x2FDC, 0);
+  d.SetB(0x2FDD, 0);
+  d.SetB(0x2FDE, 0);
+  d.SetW(0x2FE4, ~0u);
   // Three zero bytes; N&B leaves the fourth from its stack.
-  d.SetW(0x3148, 0);
-  d.SetW(0x3140, 0x00FF0000);
-  d.SetW(0x3118, 1);
-  d.SetW(0x311C, 0);
-  d.SetW(0x3130, 0);
+  d.SetW(0x2FE8, 0);
+  d.SetW(0x2FE0, 0x00FF0000);
+  d.SetW(0x2FB8, 1);
+  d.SetW(0x2FBC, 0);
+  d.SetW(0x2FD0, 0);
   // The default vertex declaration is the device's own, at +0x2FA0.
-  d.SetW(0x2FB8, d.va + 0x3100);
+  d.SetW(0x2E2C, d.va + 0x2FA0);
   d.Dirty(2, 0x80000);
-  d.SetW(0x36A0, present_interval);
-  const u32 flags2 = d.W(0x5F38);
-  d.SetW(0x5F38, (behavior_flags2 & 1) ? (flags2 | 1) : (flags2 & ~1u));
+  d.SetW(0x351C, present_interval);
+  const u32 flags2 = d.W(0x5DAC);
+  d.SetW(0x5DAC, (behavior_flags2 & 1) ? (flags2 | 1) : (flags2 & ~1u));
   d.SetW(native::off::PredicationSet, 0);
   native::UpdateTilePredicated(d);
   d.SetW(native::off::Predication, ~0u);
@@ -258,7 +246,7 @@ void SetScalerParameters(native::Device d, const be_u32 *scaler) {
     copy[i] = scaler[i];
   copy[6] = copy[10] = scaler[6] ? 3 : 0;
   for (u32 i = 0; i < 14; ++i)
-    d.SetW(0x3720 + i * 4, copy[i]);
+    d.SetW(0x359C + i * 4, copy[i]);
   d.SetB(native::off::Flags2, d.B(native::off::Flags2) | 0x10);
 }
 
@@ -291,19 +279,15 @@ bool InitializePresentationParameters(native::Device d, u32 parameters_va) {
 
   rex::system::X_VIDEO_MODE mode{};
   rex::kernel::xboxkrnl::VdQueryVideoMode(&mode);
-  d.SetW(0x55B0, u32(mode.display_width));
-  d.SetW(0x55B8, u32(mode.display_width));
-  d.SetW(0x55BC, u32(i64(float(mode.refresh_rate) + 0.5f)));
-  d.SetW(0x55B4, u32(mode.display_height));
+  d.SetW(0x5428, u32(mode.display_width));
+  d.SetW(0x5430, u32(mode.display_width));
+  d.SetW(0x5434, u32(i64(float(mode.refresh_rate) + 0.5f)));
+  d.SetW(0x542C, u32(mode.display_height));
 
   if (!p[15]) {  // DisableAutoFrontBuffer
     // peggle1-nx (2026-10-21): Peggle 1 asks for the automatic front buffer (N&B does not), and its Present resolves
     // the back buffer into it before the Swap: the PopCap logo video is shown that way. As Peggle 1's D3D
     // (sub_8245B468): D3DDevice_CreateTexture(width, height, 1, 1, 0, front format, 0, 3), kept at +14828.
-    // bejeweled3-nx: Bejeweled 3 asks for it too (its device setup sub_82468CC0 clears the 124-byte parameters and
-    // leaves DisableAutoFrontBuffer, +60, zero), and its InitializePresentationParameters sub_82311730 makes it the
-    // same way: `lwz r11,60(r31); cmpwi; bne` then CreateTexture sub_82302970(w, h, 1, 1, 0, format, 0, 3) and
-    // `stw r3,15216(r29)` (= N&B +14828); its Present sub_822F6618 resolves into [+15216] and swaps it.
     const u32 texture = native::CreateTexture(width, height, 1, 1, 0, front_format, 0, 3);
     if (!texture)
       return false;
@@ -324,9 +308,9 @@ bool InitializePresentationParameters(native::Device d, u32 parameters_va) {
     native::SetDepthStencilSurface(d, surface);
   }
   for (u32 i = 0; i < 0x7C / 4; ++i)
-    d.SetW(0x366C + i * 4, p[i]);
+    d.SetW(0x34E8 + i * 4, p[i]);
   if ((front_format & 0x3FFC0000u) != 0x24900000u)
-    d.SetW(0x36AC, (front_format & 0x3F) | 0x28280100u);
+    d.SetW(0x3528, (front_format & 0x3F) | 0x28280100u);
   SetScalerParameters(d, p + 0x60 / 4);
   // The default gamma: linear, as a piecewise-linear ramp for the front
   // buffer formats 7 and 0x36 (0x32 counts as 6).
@@ -353,7 +337,7 @@ bool InitializePresentationParameters(native::Device d, u32 parameters_va) {
     }
     SetGammaRamp(d, ramp);
   }
-  d.SetW(0x42CC, ~0u);
+  d.SetW(0x4144, ~0u);
   return true;
 }
 
@@ -363,10 +347,7 @@ bool InitializePresentationParameters(native::Device d, u32 parameters_va) {
 bool InitializeTitleDevice(native::Device d, u32 present_parameters) {
   RtlInitializeCriticalSection(d.va + kDeviceOffsetCriticalSection0);
   RtlInitializeCriticalSection(d.va + kDeviceOffsetCriticalSection1);
-  // bejeweled3-nx: as N&B (+16712): Bejeweled 3's sub_82311390 (called by InitializeHardwareDevice sub_823119B0)
-  // does `li r11,0; stw r11,17104(r31)` before VdInitializeEngines. (Peggle 2's sub_82629228 does the same at +17120,
-  // so the word exists in XDK 21256 too.)
-  d.SetW(17104, 0);
+  d.SetW(16712, 0);  // peggle1-nx: as N&B (Peggle 2 had no such word)
 
   // D3D reads the device through the kernel's VdGlobalDevice from any thread
   // (resource locks, blockers).
@@ -410,11 +391,9 @@ u32 Direct3D_CreateDevice_hook(u32 /*adapter*/, u32 device_type, u32 /*unused*/,
   // guest memory (64 KiB aligned, so each part keeps its 0x80 alignment).
   static_assert(d3d::kDeviceAllocSize % d3d::kDeviceAlignment == 0);
   constexpr u32 kFenceOffset = d3d::kDeviceAllocSize + ((kSideBufferSize + 0x7F) & ~0x7Fu);
-  // bejeweled3-nx: as Peggle 2 (peggle2-nx's code): Bejeweled 3's InitializeHardwareDevice (sub_823119B0) also gives
-  // the device a 32-byte block at +11028 (kDeviceOffsetHardwareBlock, read by its interrupt and fence paths); it
-  // follows the fence word here. (N&B's and Peggle 1's block, +10900, was SetRingBufferParameters' own.)
-  constexpr u32 kHardwareBlockOffset = kFenceOffset + 0x80;
-  constexpr u32 kBlockSize = kHardwareBlockOffset + 0x80;
+  // peggle1-nx: as N&B. (Peggle 2's InitializeHardwareDevice also gave the device a 32-byte block at +11028; Peggle 1's
+  // is N&B's +10900, set up by SetRingBufferParameters, which this hooks.)
+  constexpr u32 kBlockSize = kFenceOffset + 0x80;
   u32 block_va = 0;
   {
     std::lock_guard lock(g_free_devices_mutex);
@@ -451,15 +430,13 @@ u32 Direct3D_CreateDevice_hook(u32 /*adapter*/, u32 device_type, u32 /*unused*/,
   WriteU32(bytes, d3d::kDeviceOffsetIsTitleProcess, 0);  // KeGetCurrentProcessType() != 2
   WriteU32(bytes, kDeviceOffsetSideBuffer, side_buffer_va);
   WriteU32(bytes, kDeviceOffsetFenceCompletion, fence_va);
-  if (title_device)
-    WriteU32(bytes, kDeviceOffsetHardwareBlock, device_va + kHardwareBlockOffset);
   if (title_device) {
     // The original's default when no ring configuration is requested.
     if (!(behavior_flags & 0x100) && !(behavior_flags & 0x3F000000))
       behavior_flags |= 0xC000000;
     WriteU32(bytes, d3d::kDeviceOffsetBehaviorFlags, behavior_flags);
-    WriteU32(bytes, 21952, 0xFFFFFFFFu);
-    WriteU32(bytes, 21956, 0xFFFFFFFFu);
+    WriteU32(bytes, 21560, 0xFFFFFFFFu);
+    WriteU32(bytes, 21564, 0xFFFFFFFFu);
   } else {
     for (u32 offset : kDeviceOffsetsMinusOne)
       WriteU32(bytes, offset, 0xFFFFFFFFu);
@@ -701,14 +678,14 @@ void ConfigureForOnePassZPass(native::Device d, bool flag, u32 tile_count, u32 w
   for (u32 i = 0; i < tile_count; ++i) {
     const u32 x = d.W(native::off::TileOrigins + i * 8);
     const u32 y = d.W(native::off::TileOrigins + i * 8 + 4);
-    d.SetW(0x3498 + i * 4, (y / tile_height) * tiles_per_row + x / tile_width);
+    d.SetW(0x3338 + i * 4, (y / tile_height) * tiles_per_row + x / tile_width);
   }
-  d.SetW(0x34D4, pitch);
+  d.SetW(0x3374, pitch);
   d.SetW(native::off::SurfaceInfo, native::Insert(d.W(native::off::SurfaceInfo), pitch, 18, 14));
   d.Dirty(2, 0x100);
-  d.SetW(0x34D8, ((unit + width - 1) / unit) * unit);
+  d.SetW(0x3378, ((unit + width - 1) / unit) * unit);
   u64 predicated = d.Q(native::off::PredicatedPending2);
-  if ((d.B(native::off::Flags3) & 0x20) || (d.W(0x2FE4) & 0xE0000) != 0x40000)
+  if ((d.B(native::off::Flags3) & 0x20) || (d.W(0x2E4C) & 0xE0000) != 0x40000)
     predicated |= 0x100;
   else
     predicated &= ~u64(0x100);
@@ -739,11 +716,11 @@ u32 D3DDevice_BeginCommandBuffer_hook(u32 device_va, u32 command_buffer, u32 fla
   bw(kBufferFlags) = u32(bw(kBufferFlags)) & ~0x70u;
   for (u32 offset : {0x7Cu, 0x80u, 0x84u, 0x70u, 0x90u, 0x74u, 0x78u})
     bw(offset) = 0u;
-  d.SetW(0x3BD4, 8);
+  d.SetW(0x3A50, 8);
   d.SetB(native::off::Flags1, d.B(native::off::Flags1) & 0xDF);
-  d.SetW(0x3BC8, 0);
-  d.SetW(0x3BC4, bw(kBufferAllocatorSize));
-  for (u32 offset = 0x3654; offset <= 0x3668; offset += 4)
+  d.SetW(0x3A44, 0);
+  d.SetW(0x3A40, bw(kBufferAllocatorSize));
+  for (u32 offset = 0x34D0; offset <= 0x34E4; offset += 4)
     d.SetW(offset, 0);
   native::RewindRing(d);
 
@@ -801,8 +778,8 @@ u32 D3DDevice_BeginCommandBuffer_hook(u32 device_va, u32 command_buffer, u32 fla
     }
     d.SetW(native::off::TilingExtent, extent_x);
     d.SetW(native::off::TilingExtent + 4, extent_y);
-    d.SetW(0x34E4, 0);
-    d.SetW(0x3310, 2);
+    d.SetW(0x3384, 0);
+    d.SetW(0x31B0, 2);
     if (flags & 0x40) {
       ConfigureForOnePassZPass(d, (flags >> 7) & 1, tile_count, extent_x);
       bw(kBufferFlags) = u32(bw(kBufferFlags)) | 0x20000;
@@ -810,10 +787,10 @@ u32 D3DDevice_BeginCommandBuffer_hook(u32 device_va, u32 command_buffer, u32 fla
   }
   if (flags & 4) {
     d.SetB(native::off::Flags, d.B(native::off::Flags) | 0x40);
-    d.SetW(0x3300, native::Extract(d.W(native::off::DepthControl), 4, 3));
+    d.SetW(0x31A0, native::Extract(d.W(native::off::DepthControl), 4, 3));
     if (d.B(native::off::Flags3) & 0x20) {
       u64 predicated = d.Q(native::off::PredicatedPending2) | (u64(1) << 37);
-      if (d.W(0x34D8) != (d.W(native::off::SurfaceInfo) & 0x3FFF))
+      if (d.W(0x3378) != (d.W(native::off::SurfaceInfo) & 0x3FFF))
         predicated |= u64(1) << 57;
       d.SetQ(native::off::PredicatedPending2, predicated);
     }
@@ -1002,17 +979,12 @@ void D3DDevice_InsertCallback_hook(u32 device, u32 /*type*/, u32 callback, u32 c
 // ---------------------------------------------------------------------------
 
 constexpr u32 kDeviceOffsetReferenceCount = 0x3C;
-constexpr u32 kDeviceOffsetOwnerThread = 0x2B08;
-// bejeweled3-nx: the constant D3DCAPS9 at 0x82001830: GetDeviceCaps sub_822FAAD0 `lis r11,-32256; addi r4,r11,6192;
-// li r5,304; b memcpy` (Peggle 2 0x8207AA80, Peggle 1 0x82070C28, N&B 0x82183B00); its 304 bytes are identical to
-// Peggle 2's and N&B's.
-// feedingfrenzy-nx (2026-10-26): Direct3D_GetDeviceCaps (sub_820BCF28) copies its 304 bytes from 0x8200C8D0.
-constexpr u32 kDeviceCapsVa = 0x8200C8D0;
+constexpr u32 kDeviceOffsetOwnerThread = 0x2A88;
+// feedingfrenzy2-nx (2026-10-26): GetDeviceCaps sub_8217AFB0 copies 304 bytes from 0x82019180 (the same bytes as
+// Feeding Frenzy's).
+constexpr u32 kDeviceCapsVa = 0x82019180;  // the constant D3DCAPS9 (peggle1-nx: 0x82070C28, N&B 0x82183B00)
 constexpr u32 kDeviceCapsSize = 0x130;
-// Non-zero on a Fusion GPU. bejeweled3-nx: Bejeweled 3 does not link D3D_IsFusion (nor did Peggle 2), and in Peggle 1
-// nothing else reads the flag, so it has no Bejeweled 3 address; the IsFusion hook is in #if 0 and this (Peggle 1's
-// 0x83024414; N&B 0x82F597B4) is never read.
-constexpr u32 kFusionVa = 0x83024414;
+constexpr u32 kFusionVa = 0x83024414;      // non-zero on a Fusion GPU (peggle1-nx: N&B 0x82F597B4)
 
 // ULONG D3DDevice_AddRef(D3DDevice*) [0x8264E068]
 u32 D3DDevice_AddRef_hook(u32 device_va) {
@@ -1053,10 +1025,10 @@ void D3DDevice_GetDisplayMode_hook(u32 device_va, u32 /*swap_chain*/, mapped_u32
   const native::Device d = native::DeviceAt(device_va);
   if (!d || !mode)
     return;
-  mode[0] = d.W(0x366C);
-  mode[1] = d.W(0x3670);
-  mode[2] = d.W(0x55BC);
-  mode[3] = d.W(0x3674);
+  mode[0] = d.W(0x34E8);
+  mode[1] = d.W(0x34EC);
+  mode[2] = d.W(0x5434);
+  mode[3] = d.W(0x34F0);
 }
 
 // void D3DDevice_BlockOnFence(DWORD Fence) [0x8228F3B0]: on the device D3D
@@ -1160,22 +1132,22 @@ std::array<u16, 1024> GammaTable(bool inverse) {
 
 // The device's gamma (+0x3A9C, red, green, blue: 256 words each) for the
 // display to pick up; the renderer presents without it.
-constexpr u32 kDeviceOffsetGammaRamp = 0x3C20;
+constexpr u32 kDeviceOffsetGammaRamp = 0x3A9C;
 
 void StoreGamma(native::Device d, const be_u16 (&corrected)[768]) {
   if (std::memcmp(corrected, d.bytes + kDeviceOffsetGammaRamp, sizeof(corrected)) == 0)
     return;
   if (KeGetCurrentProcessType() != 2) {
     // The display's pending copy takes the previous ramp first.
-    const u32 pending = d.W(0x5F1C);
-    if (pending && !(d.W(0x5F20) & 0x80000000u)) {
+    const u32 pending = d.W(0x5D90);
+    if (pending && !(d.W(0x5D94) & 0x80000000u)) {
       if (auto *dest = GuestPtr<u8>(pending))
         std::memcpy(dest, d.bytes + kDeviceOffsetGammaRamp, sizeof(corrected));
     }
-    d.SetW(0x5F20, d.W(0x5F20) | 0x80000000u);
+    d.SetW(0x5D94, d.W(0x5D94) | 0x80000000u);
   }
   std::memcpy(d.bytes + kDeviceOffsetGammaRamp, corrected, sizeof(corrected));
-  d.SetW(0x42CC, d.W(0x42CC) | 2);
+  d.SetW(0x4144, d.W(0x4144) | 2);
 }
 
 // D3DDevice_SetGammaRamp's work: the ramp (D3DGAMMARAMP, 3 x 256 words)
@@ -1296,10 +1268,10 @@ void SetFence(u32 device_va) {
   if (bytes[kDeviceOffsetFlags2] & kDeviceFlagImmediateFences) {
     Device d = DeviceAt(device_va);
     const u32 fence = d.W(off::FenceTag);
-    if (!d.W(0x55A4)) {
+    if (!d.W(0x541C)) {
       if (auto *completion = GuestPtr<be_u32>(d.W(off::FenceCompletion))) {
         completion[0] = fence;
-        completion[1] = (d.W(0x3BCC) & 3) | d.W(off::Ring);
+        completion[1] = (d.W(0x3A48) & 3) | d.W(off::Ring);
       }
     }
     d.SetW(off::FenceTag, fence + 2);
@@ -1311,45 +1283,37 @@ void SetFence(u32 device_va) {
 
 } // namespace renut::gpu::native
 
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_InsertCallback_hook);  // D3DDevice_InsertCallback  // N&B sub_821FB688
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_AddRef_hook);  // D3DDevice_AddRef  // N&B sub_8264E068
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_AcquireThreadOwnership_hook);  // D3DDevice_AcquireThreadOwnership  // N&B sub_8264E0D8
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_ReleaseThreadOwnership_hook);  // D3DDevice_ReleaseThreadOwnership  // N&B sub_8264E118
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_GetDeviceCaps_hook);  // D3DDevice_GetDeviceCaps  // N&B sub_82658948
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_GetDisplayMode_hook);  // D3DDevice_GetDisplayMode  // N&B sub_82658960
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BlockOnFence_hook);  // D3DDevice_BlockOnFence  // N&B sub_8228F3B0
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_SynchronizeToPresentationInterval_hook);  // D3D_SynchronizeToPresentationInterval  // N&B sub_8228A748
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DResource_GetDevice_hook);  // D3DResource_GetDevice  // N&B sub_82654D50
-#if 0  // bejeweled3-nx: N&B sub_82B6BF60 (D3D_IsFusion) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_82440C80, D3D_IsFusion_hook);  // D3D_IsFusion  // N&B sub_82B6BF60
-#endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_SetGammaRamp_hook);  // D3DDevice_SetGammaRamp  // N&B sub_8264D948
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_SetPWLGamma_hook);  // D3DDevice_SetPWLGamma  // N&B sub_8264DA18
-BANJO_RENUT_HOOK(sub_820BF218, Direct3D_CreateDevice_hook);  // Direct3D_CreateDevice  // feedingfrenzy-nx: called once with (0, 1, 0, 0, &params, &0x82310EE0); fills the device
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_Release_hook);  // D3DDevice_Release  // N&B sub_8264E080
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_XenonGpu_Initialize_hook);  // D3D_XenonGpu_Initialize  // N&B sub_82663208
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_InitializeApiState_hook);  // D3D_InitializeApiState  // N&B sub_826597C8
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_InitializePresentationParameters_hook);  // D3D_InitializePresentationParameters  // N&B sub_82659AA8
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_CDevice_Uninitialize_hook);  // D3D_CDevice_Uninitialize  // N&B sub_8265A198
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, KickOff_hook);  // D3D_CDevice_KickOff  // N&B sub_82210AB0
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, KickOffSegment_hook);  // D3D_CDevice_KickOffSegment  // N&B sub_822106C8
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, BeginRingBig_hook);  // D3D_CDevice_BeginRingBig  // N&B sub_821F7C18
-#if 0  // peggle2-nx / peggle1-nx / bejeweled3-nx: N&B sub_82A11158 (D3D_CDevice_BeginRingManual) is linked in none of Peggle 2, Peggle 1 and Bejeweled 3
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_InsertCallback_hook);  // D3DDevice_InsertCallback  // Peggle 1 sub_82440688, N&B sub_821FB688
+BANJO_RENUT_HOOK(sub_8217D058, D3DDevice_AddRef_hook);  // D3DDevice_AddRef  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_824439A0, N&B sub_8264E068)
+BANJO_RENUT_HOOK(sub_8217D2E0, D3DDevice_AcquireThreadOwnership_hook);  // D3DDevice_AcquireThreadOwnership  // feedingfrenzy2-nx: owner +10888 = GetCurrentThreadId sub_82208CE0 under the device's critical section (Peggle 1 sub_82443E40, N&B sub_8264E0D8)
+BANJO_RENUT_HOOK(sub_8217D248, D3DDevice_ReleaseThreadOwnership_hook);  // D3DDevice_ReleaseThreadOwnership  // feedingfrenzy2-nx: BlockUntilIdle, then owner +10888 replaced, flag 2 at +10942 set (Peggle 1 sub_82443E80, N&B sub_8264E118)
+BANJO_RENUT_HOOK(sub_8217AFB0, D3DDevice_GetDeviceCaps_hook);  // D3DDevice_GetDeviceCaps  // feedingfrenzy2-nx: sig 1.00; copies 304 bytes from 0x82019180 (Peggle 1 sub_8244A218, N&B sub_82658948)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_GetDisplayMode_hook);  // D3DDevice_GetDisplayMode  // Peggle 1 sub_8244A870, N&B sub_82658960
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BlockOnFence_hook);  // D3DDevice_BlockOnFence  // Peggle 1 sub_8243F9E8, N&B sub_8228F3B0
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_SynchronizeToPresentationInterval_hook);  // D3D_SynchronizeToPresentationInterval  // Peggle 1 sub_82442BD8, N&B sub_8228A748
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DResource_GetDevice_hook);  // D3DResource_GetDevice  // Peggle 1 sub_82441790, N&B sub_82654D50
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_IsFusion_hook);  // D3D_IsFusion  // Peggle 1 sub_82440C80, N&B sub_82B6BF60
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_SetGammaRamp_hook);  // D3DDevice_SetGammaRamp  // Peggle 1 sub_82436850, N&B sub_8264D948
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_SetPWLGamma_hook);  // D3DDevice_SetPWLGamma  // Peggle 1 sub_82436938, N&B sub_8264DA18
+BANJO_RENUT_HOOK(sub_8217D478, Direct3D_CreateDevice_hook);  // Direct3D_CreateDevice  // feedingfrenzy2-nx: sig 0.83 (match 0.93); trace (0, 1, 0, 0, params, &out) once (Peggle 1 sub_824444F8, N&B sub_8264DF28)
+BANJO_RENUT_HOOK(sub_8217D1F0, D3DDevice_Release_hook);  // D3DDevice_Release  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_82443D68, N&B sub_8264E080)
+BANJO_RENUT_HOOK(sub_8217FFA8, D3D_XenonGpu_Initialize_hook);  // D3D_XenonGpu_Initialize  // feedingfrenzy2-nx: sig 0.98 (Peggle 1 sub_8245EE10, N&B sub_82663208)
+BANJO_RENUT_HOOK(sub_821801C0, D3D_InitializeApiState_hook);  // D3D_InitializeApiState  // feedingfrenzy2-nx: sig 0.97; calls every state setter of the tables (Peggle 1 sub_8245B200, N&B sub_826597C8)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_InitializePresentationParameters_hook);  // D3D_InitializePresentationParameters  // Peggle 1 sub_8245B468, N&B sub_82659AA8
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3D_CDevice_Uninitialize_hook);  // D3D_CDevice_Uninitialize  // Peggle 1 sub_8245BC60, N&B sub_8265A198
+BANJO_RENUT_HOOK(sub_82176B90, KickOff_hook);  // D3D_CDevice_KickOff  // feedingfrenzy2-nx: sig 1.00; trace (dev, ...) from Present and the game (Peggle 1 sub_82440230, N&B sub_82210AB0)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, KickOffSegment_hook);  // D3D_CDevice_KickOffSegment  // Peggle 1 sub_824400A8, N&B sub_822106C8
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, BeginRingBig_hook);  // D3D_CDevice_BeginRingBig  // Peggle 1 sub_824404D0, N&B sub_821F7C18
+#if 0  // peggle2-nx / peggle1-nx: N&B sub_82A11158 (D3D_CDevice_BeginRingManual) is linked in neither Peggle 2 nor Peggle 1
 BANJO_RENUT_HOOK(sub_82A11158, BeginRingManual_hook);  // D3D_CDevice_BeginRingManual
 #endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, RingBufferDeviceAllocate_hook);  // D3D_RingBufferDeviceAllocate  // N&B sub_8222D3E0
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, AllocateInlineData_hook);  // D3D_CDevice_AllocateInlineData  // N&B sub_8222D240
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_SetRingBufferParameters_hook);  // D3DDevice_SetRingBufferParameters  // N&B sub_82657508
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK_SHARED(sub_XXXXXXXX, D3DDevice_Swap_hook);  // D3DDevice_Swap  // N&B sub_82287590
-#if 0  // bejeweled3-nx: N&B sub_82657CB0 (D3DDevice_BeginCommandBuffer) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_82445BF0, D3DDevice_BeginCommandBuffer_hook);  // D3DDevice_BeginCommandBuffer  // N&B sub_82657CB0
-#endif
-#if 0  // bejeweled3-nx: N&B sub_826582A0 (D3DDevice_EndCommandBuffer) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_824488D8, D3DDevice_EndCommandBuffer_hook);  // D3DDevice_EndCommandBuffer  // N&B sub_826582A0
-#endif
-#if 0  // bejeweled3-nx: N&B sub_82222888 (D3DDevice_RunCommandBuffer) is not linked in Bejeweled 3
-BANJO_RENUT_HOOK(sub_82448CB0, D3DDevice_RunCommandBuffer_hook);  // D3DDevice_RunCommandBuffer  // N&B sub_82222888
-#endif
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, BlockOnFence_hook);  // D3D_CDevice_BlockOnFence  // N&B sub_8228F558
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, CBlocker_Check_hook);  // D3D_CBlocker_Check  // N&B sub_8264DCD0
-// feedingfrenzy-nx: not linked or not called in XDK 2571: BANJO_RENUT_HOOK(sub_XXXXXXXX, IsFencePending_hook);  // D3DDevice_IsFencePending  // N&B sub_8228F650
+BANJO_RENUT_HOOK(sub_82175D18, RingBufferDeviceAllocate_hook);  // D3D_RingBufferDeviceAllocate  // feedingfrenzy2-nx: sig 0.95 (Peggle 1 sub_8243EDA0, N&B sub_8222D3E0)
+BANJO_RENUT_HOOK(sub_82175F20, AllocateInlineData_hook);  // D3D_CDevice_AllocateInlineData  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_8243EFD0, N&B sub_8222D240)
+BANJO_RENUT_HOOK(sub_82176E88, D3DDevice_SetRingBufferParameters_hook);  // D3DDevice_SetRingBufferParameters  // feedingfrenzy2-nx: sig 0.99 (Peggle 1 sub_82440810, N&B sub_82657508)
+BANJO_RENUT_HOOK(sub_8217E538, D3DDevice_Swap_hook);  // D3DDevice_Swap  // feedingfrenzy2-nx: the only VdSwap caller; Present ends with it (Peggle 1 sub_824430C8, N&B sub_82287590)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_BeginCommandBuffer_hook);  // D3DDevice_BeginCommandBuffer  // Peggle 1 sub_82445BF0, N&B sub_82657CB0
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_EndCommandBuffer_hook);  // D3DDevice_EndCommandBuffer  // Peggle 1 sub_824488D8, N&B sub_826582A0
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, D3DDevice_RunCommandBuffer_hook);  // D3DDevice_RunCommandBuffer  // Peggle 1 sub_82448CB0, N&B sub_82222888
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, BlockOnFence_hook);  // D3D_CDevice_BlockOnFence  // Peggle 1 sub_8243F6B0, N&B sub_8228F558
+BANJO_RENUT_HOOK(sub_8217D118, CBlocker_Check_hook);  // D3D_CBlocker_Check  // feedingfrenzy2-nx: sig 1.00 (Peggle 1 sub_82443AA0, N&B sub_8264DCD0)
+// feedingfrenzy2-nx: not linked or not called in XDK 6534: BANJO_RENUT_HOOK(sub_XXXXXXXX, IsFencePending_hook);  // D3DDevice_IsFencePending  // Peggle 1 sub_824403D0, N&B sub_8228F650

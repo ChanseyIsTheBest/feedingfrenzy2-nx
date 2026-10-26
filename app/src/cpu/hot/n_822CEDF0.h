@@ -2,6 +2,8 @@
 // feedingfrenzy-nx (2026-10-26): ninth in the emulator profile (out/renut_tests/emu/prof1). 48 instructions:
 //   dst == src           -> `beqlr`;
 //   dst < src (signed)   -> tail call of memcpy sub_822CD480 (forward: memmove for dst < src, a plain copy otherwise);
+// feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's memmove sub_821F6720 is the same code, its tail call reaching
+// memcpy sub_821F4AC0 (forward as well).
 //   dst > src            -> backward from dst + n / src + n: bytes down to word alignment of dst, then words (lwz/stw
 //                           when src is aligned, four lbz assembled otherwise), then the last bytes; r3 ends at dst.
 // Both paths give memmove's result (the signed compare only picks the direction; ranges far apart do not overlap), and

@@ -215,7 +215,7 @@ static_assert(sizeof(ControlPacket) == 48);
 
 // Public D3DDevice (0x2B00 bytes in N&B's XDK) followed by the CDevice-private
 // tail of the 0x5E00-byte allocation Direct3D_CreateDevice makes.
-constexpr u32 kDeviceAllocSize = 0x6080;
+constexpr u32 kDeviceAllocSize = 0x5E00;
 constexpr u32 kDeviceAlignment = 0x80;
 
 struct Device {
@@ -267,20 +267,20 @@ static_assert(offsetof(Device, m_ZFilter) == 0x2A8A);
 
 // CDevice-private fields Direct3D_CreateDevice initialises (byte offsets into
 // the allocation, from its decompilation at 0x8264DF28).
-constexpr u32 kDeviceOffsetCreationThreadId = 11016;  // GetCurrentThreadId()
-constexpr u32 kDeviceOffsetIsTitleProcess = 11020;    // KeGetCurrentProcessType() == 2
-constexpr u32 kDeviceOffsetBehaviorFlags = 24376;     // Direct3D_CreateDevice arg 4
+constexpr u32 kDeviceOffsetCreationThreadId = 10888;  // GetCurrentThreadId()
+constexpr u32 kDeviceOffsetIsTitleProcess = 10892;    // KeGetCurrentProcessType() == 2
+constexpr u32 kDeviceOffsetBehaviorFlags = 23980;     // Direct3D_CreateDevice arg 4
 
 // Bound objects the Set* calls store in the CDevice-private area (guest VAs).
-constexpr u32 kDeviceOffsetVertexDeclaration = 0x2FB8;  // SetVertexDeclaration
-constexpr u32 kDeviceOffsetIndexBuffer = 0x31F4;        // SetIndices
-constexpr u32 kDeviceOffsetRenderTargets = 0x31F8;      // SetRenderTarget, [4]
-constexpr u32 kDeviceOffsetDepthStencil = 0x3208;       // SetDepthStencilSurface
-constexpr u32 kDeviceOffsetStreamSources = 0x320C;      // SetStreamSource, [16]
-constexpr u32 kDeviceOffsetStreamStrides = 0x3250;      // SetStreamSource, u8[16], stride / 4
-constexpr u32 kDeviceOffsetTextures = 0x3260;           // SetTexture, [kTextureFetchSlots]
-constexpr u32 kDeviceOffsetPixelShader = 0x32F4;        // SetPixelShader
-constexpr u32 kDeviceOffsetVertexShader = 0x32F8;       // SetVertexShader
+constexpr u32 kDeviceOffsetVertexDeclaration = 0x2E2C;  // SetVertexDeclaration
+constexpr u32 kDeviceOffsetIndexBuffer = 0x3094;        // SetIndices
+constexpr u32 kDeviceOffsetRenderTargets = 0x3098;      // SetRenderTarget, [4]
+constexpr u32 kDeviceOffsetDepthStencil = 0x30A8;       // SetDepthStencilSurface
+constexpr u32 kDeviceOffsetStreamSources = 0x30AC;      // SetStreamSource, [16]
+constexpr u32 kDeviceOffsetStreamStrides = 0x30F0;      // SetStreamSource, u8[16], stride / 4
+constexpr u32 kDeviceOffsetTextures = 0x3100;           // SetTexture, [kTextureFetchSlots]
+constexpr u32 kDeviceOffsetPixelShader = 0x3194;        // SetPixelShader
+constexpr u32 kDeviceOffsetVertexShader = 0x3198;       // SetVertexShader
 // In m_TessellatorPacket, which holds registers 0x2280 on: VGT_HOS_CNTL
 // (tessellation mode in bits 0-1: 0 discrete, 1 continuous, 2 adaptive) and
 // the float VGT_HOS_MAX_TESS_LEVEL / VGT_HOS_MIN_TESS_LEVEL.
@@ -291,23 +291,23 @@ constexpr u32 kDeviceOffsetMinTessellationLevel = 0x2980;
 // (D3DDevice_SetPredication 0x8222AA18 and SetCommandBufferPredication
 // 0x82658678). Bits 2i and 2i+1 run the commands in tile i's pass of
 // predicated tiling (Z and render).
-constexpr u32 kDeviceOffsetPredication = 0x3304;
+constexpr u32 kDeviceOffsetPredication = 0x31A4;
 // D3DCommandBuffer being recorded (BeginCommandBuffer sets, End clears).
-constexpr u32 kDeviceOffsetCommandBuffer = 13904;
+constexpr u32 kDeviceOffsetCommandBuffer = 13516;
 // The leading part of the device the draw, clear and resolve paths read (up
 // to and including kDeviceOffsetPredication); a copy of it stands in for the
 // device when a recorded command buffer is replayed.
-constexpr u32 kDeviceSnapshotSize = 0x3308;
+constexpr u32 kDeviceSnapshotSize = 0x31A8;
 static_assert(kDeviceOffsetVertexShader + 4 <= kDeviceSnapshotSize);
 static_assert(kDeviceOffsetPredication + 4 <= kDeviceSnapshotSize);
 // m_pRing the inline end of BeginVertices / BeginIndexedVertices restores.
-constexpr u32 kDeviceOffsetVerticesRingEnd = 0x3604;
+constexpr u32 kDeviceOffsetVerticesRingEnd = 0x3484;
 // Swap bookkeeping (D3DDevice_Swap 0x82287590).
-constexpr u32 kDeviceOffsetSwapCount = 0x4238;
-constexpr u32 kDeviceOffsetFenceTag = 0x2B1C;         // current fence tag
-constexpr u32 kDeviceOffsetSwapFenceTag = 0x2B30;     // fence tag at the last Swap
-constexpr u32 kDeviceOffsetPresentFenceTag = 0x3BE0;  // fence tag of the last presented frame
-constexpr u32 kDeviceOffsetSwapFlags = 0x2B3D;
+constexpr u32 kDeviceOffsetSwapCount = 0x40B0;
+constexpr u32 kDeviceOffsetFenceTag = 0x2A9C;         // current fence tag
+constexpr u32 kDeviceOffsetSwapFenceTag = 0x2AB0;     // fence tag at the last Swap
+constexpr u32 kDeviceOffsetPresentFenceTag = 0x3A5C;  // fence tag of the last presented frame
+constexpr u32 kDeviceOffsetSwapFlags = 0x2ABD;
 constexpr u8 kSwapFlagPending = 0x10;
 
 constexpr u32 kMaxStreams = 16;

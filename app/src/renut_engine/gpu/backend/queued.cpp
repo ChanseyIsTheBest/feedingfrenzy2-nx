@@ -55,8 +55,8 @@ REXCVAR_DEFINE_BOOL(sa2_renut_capture_batches, true, "SA2/Renderer",
     .lifecycle(rex::cvar::Lifecycle::kInitOnly);
 REXCVAR_DEFINE_BOOL(sa2_renut_snapshot_deltas_narrow, true, "SA2/Renderer",
                     "Renut's renderer (sa2_renut_snapshot_deltas): the game thread compares only the device chunks the "
-                    "render thread reads (41 of 77, Bejeweled 3's layout: not the dirty masks, ring pointers and call tables before the fetch "
-                    "constants, nor the private words from 11008 to 12159, which only the hooks use on the live "
+                    "render thread reads (39 of 71, N&B's layout: not the dirty masks, ring pointers and call tables before the fetch "
+                    "constants, nor the private words from 10880 to 11775, which only the hooks use on the live "
                     "device). The second console run: comparing all 77 was 9 % of the game thread. Off: all 77")
     .lifecycle(rex::cvar::Lifecycle::kInitOnly);
 REXCVAR_DEFINE_BOOL(sa2_renut_neon_compare, true, "SA2/Renderer",
@@ -232,11 +232,11 @@ constexpr u32 DeltaChunkSize(u32 i) {
 // sa2-nx (2026-10-20, sa2_renut_snapshot_deltas_narrow): the device bytes the render thread never reads from a draw's
 // device (DrawStateLocked and what it calls: the accessors of render/draw.cpp, textures.cpp, surfaces.cpp, the pipeline
 // key): before the fetch constants (the dirty masks, ring pointers and Set/Get*State call tables, which a recorded
-// command buffer's replay leaves zero too), and the private words 11008-12159 (the creation thread, the fences, the
+// command buffer's replay leaves zero too), and the private words 10880-11775 (the creation thread, the fences, the
 // swap flags: the hooks read and write them on the live device). Their chunks are not compared; the render thread's
 // device keeps them as the frame's whole copy had them.
 constexpr u32 kDeltaUnreadEnd = kDeltaVertexF - 0x300;  // 0x480: the fetch constants' start
-constexpr u32 kDeltaPrivateUnreadBegin = 11008, kDeltaPrivateUnreadEnd = 12160;
+constexpr u32 kDeltaPrivateUnreadBegin = 10880, kDeltaPrivateUnreadEnd = 11776;
 constexpr bool DeltaChunkRead(u32 i) {
   const u32 at = DeltaChunkOffset(i);
   return !(at < kDeltaUnreadEnd || (at >= kDeltaPrivateUnreadBegin && at + 64 <= kDeltaPrivateUnreadEnd));
@@ -259,7 +259,7 @@ constexpr DeltaChunkList MakeDeltaChunkList(bool narrow) {
 }
 constexpr DeltaChunkList kDeltaAllChunks = MakeDeltaChunkList(false);
 constexpr DeltaChunkList kDeltaReadChunks = MakeDeltaChunkList(true);
-static_assert(kDeltaReadChunks.count == 41);  // bejeweled3-nx: XDK 20764's layout (N&B and Peggle 1: 39, SA2 and Peggle 2: 40)
+static_assert(kDeltaReadChunks.count == 39);  // peggle1-nx: N&B's layout, as banjo-nx's (SA2 and Peggle 2: 40)
 // Whether device byte 'at' is one the render thread reads (the verify mode compares those).
 constexpr bool DeltaByteRead(u32 at) {
   return !(at < kDeltaUnreadEnd || (at >= kDeltaPrivateUnreadBegin && at < kDeltaPrivateUnreadEnd));

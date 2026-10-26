@@ -1,9 +1,10 @@
-// D3D call trace (PC test aid, 2026-10-26: mapping Renut's hooks to Feeding Frenzy's XDK 2571 Direct3D,
-// docs/feedingfrenzy2-notes.md): every function of the Direct3D region (0x820B0000-0x820CC000) that code outside it
-// calls (96, out/ff_d3d_api.txt) is hooked. With feedingfrenzy2_d3d_trace = <game frame>, the log gets, per
-// function: its calls up to that frame, whether r3 was the device (the word at 0x82310EE0, which
-// Direct3D_CreateDevice fills), its first arguments and caller; and the order of the calls during that frame.
-// Off by default; the PC build only.
+// D3D call trace (PC test aid, 2026-10-26: mapping Renut's hooks to Feeding Frenzy 2's Direct3D,
+// docs/feedingfrenzy2-notes.md): every function of the Direct3D library (0x82167000-0x82186400) that code outside it
+// calls (119, out/renut_map/api.txt) is hooked, but Present sub_8217EAD0 (the frame hook has it). With
+// feedingfrenzy2_d3d_trace = <game frame>, the log gets, per function: its calls up to that frame, whether r3 was the
+// device (the word Direct3D_CreateDevice sub_8217D478 fills through its r8: a field of the game's renderer here, not a
+// global), its first arguments and caller; and the order of the calls during that frame. Off by default; the PC build
+// only.
 
 #include <atomic>
 #include <cstdint>
@@ -27,7 +28,8 @@ REXCVAR_DEFINE_INT32(feedingfrenzy2_d3d_trace, 0, "FeedingFrenzy2",
 
 namespace {
 
-constexpr uint32_t kDeviceGlobal = 0x82310EE0;
+constexpr uint32_t kCreateDevice = 0x8217D478;
+uint32_t g_device_slot = 0;  // Direct3D_CreateDevice's r8
 struct Stat {
   uint32_t addr = 0;
   uint64_t calls = 0, device_calls = 0;
@@ -48,8 +50,9 @@ void Trace(uint32_t addr, PPCContext& ctx, uint8_t* base) {
   const int32_t at = REXCVAR_GET(feedingfrenzy2_d3d_trace);
   if (at <= 0 || g_dumped) return;
   const uint64_t frame = g_feedingfrenzy2_game_frames.load(std::memory_order_relaxed);
-  const uint32_t device = Load32(base, kDeviceGlobal);
   std::lock_guard<std::mutex> lock(g_mutex);
+  if (addr == kCreateDevice) g_device_slot = ctx.r8.u32;
+  const uint32_t device = g_device_slot ? Load32(base, g_device_slot) : 0;
   Stat* s = nullptr;
   for (auto& x : g_stats) if (x.addr == addr) s = &x;
   if (!s) {
@@ -63,21 +66,21 @@ void Trace(uint32_t addr, PPCContext& ctx, uint8_t* base) {
     f[0] = ctx.r3.u32; f[1] = ctx.r4.u32; f[2] = ctx.r5.u32; f[3] = ctx.r6.u32; f[4] = ctx.r7.u32;
     f[5] = uint32_t(ctx.lr);
   }
-  // The shader containers (CreatePixelShader 820B73E8, CreateVertexShader 820B74D0) and the vertex elements
-  // (CreateVertexDeclaration 820B6180): their first 96 bytes, on the first three calls.
-  if (s->calls < 3 && (addr == 0x820B73E8u || addr == 0x820B74D0u || addr == 0x820B6180u) && ctx.r3.u32) {
+  // The shader containers (CreatePixelShader 8216CAD0, CreateVertexShader 8216CBE0) and the vertex elements
+  // (CreateVertexDeclaration 8216B678): their first 96 bytes, on the first three calls.
+  if (s->calls < 3 && (addr == 0x8216CAD0u || addr == 0x8216CBE0u || addr == 0x8216B678u) && ctx.r3.u32) {
     std::string hex;
     for (uint32_t o = 0; o < 96; o += 4) hex += fmt::format(" {:08X}", Load32(base, ctx.r3.u32 + o));
     REXLOG_INFO("[d3dtrace] {:08X} r3 {:08X}:{}", addr, ctx.r3.u32, hex);
   }
   // Every shader container created (virtual part + physical part) to out/ff_shaders/<ps|vs>_<n>.bin, for the
   // container-version study (XDK 2571 writes version 0x0E; Renut and XenosRecomp read 0x11).
-  if ((addr == 0x820B73E8u || addr == 0x820B74D0u) && ctx.r3.u32) {
+  if ((addr == 0x8216CAD0u || addr == 0x8216CBE0u) && ctx.r3.u32) {
     const uint32_t c = ctx.r3.u32;
     const uint32_t size = Load32(base, c + 4) + Load32(base, c + 8);
     if (size > 0 && size < 0x40000) {
       static int n = 0;
-      const std::string path = fmt::format("out/ff_shaders/{}_{:02}.bin", addr == 0x820B73E8u ? "ps" : "vs", n++);
+      const std::string path = fmt::format("out/ff_shaders/{}_{:02}.bin", addr == 0x8216CAD0u ? "ps" : "vs", n++);
       std::filesystem::create_directories("out/ff_shaders");
       if (FILE* f = std::fopen(path.c_str(), "wb")) {
         std::fwrite(base + c, 1, size, f);
@@ -110,99 +113,121 @@ void Trace(uint32_t addr, PPCContext& ctx, uint8_t* base) {
 
 #define FF_D3D_TRACE(ADDR)                            extern "C" REX_FUNC(__imp__sub_##ADDR);            REX_HOOK_RAW(sub_##ADDR) {                            Trace(0x##ADDR##u, ctx, base);                     __imp__sub_##ADDR(ctx, base);                    }
 
-FF_D3D_TRACE(820B02F4)
-FF_D3D_TRACE(820B0348)
-FF_D3D_TRACE(820B0630)
-FF_D3D_TRACE(820B0EE8)
-FF_D3D_TRACE(820B0F50)
-FF_D3D_TRACE(820B17B0)
-FF_D3D_TRACE(820B2428)
-FF_D3D_TRACE(820B2570)
-FF_D3D_TRACE(820B2588)
-FF_D3D_TRACE(820B3D50)
-FF_D3D_TRACE(820B3D58)
-FF_D3D_TRACE(820B3D70)
-FF_D3D_TRACE(820B3FB8)
-FF_D3D_TRACE(820B4118)
-FF_D3D_TRACE(820B57B0)
-FF_D3D_TRACE(820B59E8)
-FF_D3D_TRACE(820B5B30)
-FF_D3D_TRACE(820B5C78)
-FF_D3D_TRACE(820B5CD0)
-FF_D3D_TRACE(820B5D28)
-FF_D3D_TRACE(820B5D78)
-FF_D3D_TRACE(820B5DC8)
-FF_D3D_TRACE(820B5E18)
-FF_D3D_TRACE(820B6158)
-FF_D3D_TRACE(820B6160)
-FF_D3D_TRACE(820B6180)
-FF_D3D_TRACE(820B6308)
-FF_D3D_TRACE(820B6310)
-FF_D3D_TRACE(820B6410)
-FF_D3D_TRACE(820B6420)
-FF_D3D_TRACE(820B73E8)
-FF_D3D_TRACE(820B74D0)
-FF_D3D_TRACE(820B75F8)
-FF_D3D_TRACE(820B7600)
-FF_D3D_TRACE(820B7608)
-FF_D3D_TRACE(820B7630)
-FF_D3D_TRACE(820B7638)
-FF_D3D_TRACE(820B7640)
-FF_D3D_TRACE(820B7C98)
-FF_D3D_TRACE(820B7D08)
-FF_D3D_TRACE(820B8608)
-FF_D3D_TRACE(820B87C8)
-FF_D3D_TRACE(820B87D0)
-FF_D3D_TRACE(820B9040)
-FF_D3D_TRACE(820B9048)
-FF_D3D_TRACE(820B9050)
-FF_D3D_TRACE(820B9058)
-FF_D3D_TRACE(820B90A0)
-FF_D3D_TRACE(820B9330)
-FF_D3D_TRACE(820B9338)
-FF_D3D_TRACE(820B9340)
-FF_D3D_TRACE(820B9348)
-FF_D3D_TRACE(820B94F8)
-FF_D3D_TRACE(820B9500)
-FF_D3D_TRACE(820B9508)
-FF_D3D_TRACE(820B97B8)
-FF_D3D_TRACE(820B9868)
-FF_D3D_TRACE(820B9998)
-FF_D3D_TRACE(820B9A30)
-FF_D3D_TRACE(820B9E98)
-FF_D3D_TRACE(820BAA68)
-FF_D3D_TRACE(820BB0E0)
-FF_D3D_TRACE(820BB270)
-FF_D3D_TRACE(820BBD90)
-FF_D3D_TRACE(820BBE98)
-FF_D3D_TRACE(820BCD90)
-FF_D3D_TRACE(820BCE08)
-FF_D3D_TRACE(820BCEB8)
-FF_D3D_TRACE(820BCF18)
-FF_D3D_TRACE(820BCF28)
-FF_D3D_TRACE(820BF218)
-FF_D3D_TRACE(820CA3B0)
-FF_D3D_TRACE(820CA490)
-FF_D3D_TRACE(820CAE98)
-FF_D3D_TRACE(820CAEA0)
-FF_D3D_TRACE(820CAF08)
-FF_D3D_TRACE(820CAF60)
-FF_D3D_TRACE(820CB208)
-FF_D3D_TRACE(820CB268)
-FF_D3D_TRACE(820CB2C0)
-FF_D3D_TRACE(820CB308)
-FF_D3D_TRACE(820CB338)
-FF_D3D_TRACE(820CB390)
-FF_D3D_TRACE(820CB4F8)
-FF_D3D_TRACE(820CB5B8)
-FF_D3D_TRACE(820CB670)
-FF_D3D_TRACE(820CB860)
-FF_D3D_TRACE(820CB8B0)
-FF_D3D_TRACE(820CBB50)
-FF_D3D_TRACE(820CBC40)
-FF_D3D_TRACE(820CBD10)
-FF_D3D_TRACE(820CBDA8)
-FF_D3D_TRACE(820CBE10)
-FF_D3D_TRACE(820CBE80)
-FF_D3D_TRACE(820CBEE0)
-FF_D3D_TRACE(820CBFC0)
+FF_D3D_TRACE(82167044)
+FF_D3D_TRACE(821670C0)
+FF_D3D_TRACE(82167128)
+FF_D3D_TRACE(82167158)
+FF_D3D_TRACE(821671F0)
+FF_D3D_TRACE(82167208)
+FF_D3D_TRACE(82167290)
+FF_D3D_TRACE(821673B0)
+FF_D3D_TRACE(82167840)
+FF_D3D_TRACE(82168B88)
+FF_D3D_TRACE(82168B98)
+FF_D3D_TRACE(82168C50)
+FF_D3D_TRACE(82168C68)
+FF_D3D_TRACE(82168D20)
+FF_D3D_TRACE(82168D28)
+FF_D3D_TRACE(82168D30)
+FF_D3D_TRACE(82168DE0)
+FF_D3D_TRACE(82168F00)
+FF_D3D_TRACE(82169028)
+FF_D3D_TRACE(821690C0)
+FF_D3D_TRACE(821690E0)
+FF_D3D_TRACE(82169128)
+FF_D3D_TRACE(82169148)
+FF_D3D_TRACE(8216A110)
+FF_D3D_TRACE(8216A130)
+FF_D3D_TRACE(8216A148)
+FF_D3D_TRACE(8216A678)
+FF_D3D_TRACE(8216AD68)
+FF_D3D_TRACE(8216AE48)
+FF_D3D_TRACE(8216AF28)
+FF_D3D_TRACE(8216AF88)
+FF_D3D_TRACE(8216AFE8)
+FF_D3D_TRACE(8216B040)
+FF_D3D_TRACE(8216B098)
+FF_D3D_TRACE(8216B0E8)
+FF_D3D_TRACE(8216B3A0)
+FF_D3D_TRACE(8216B570)
+FF_D3D_TRACE(8216B678)
+FF_D3D_TRACE(8216B7E8)
+FF_D3D_TRACE(8216B7F0)
+FF_D3D_TRACE(8216C570)
+FF_D3D_TRACE(8216C5A0)
+FF_D3D_TRACE(8216C5B8)
+FF_D3D_TRACE(8216C5D0)
+FF_D3D_TRACE(8216C5E8)
+FF_D3D_TRACE(8216C600)
+FF_D3D_TRACE(8216C618)
+FF_D3D_TRACE(8216C648)
+FF_D3D_TRACE(8216C660)
+FF_D3D_TRACE(8216C918)
+FF_D3D_TRACE(8216CAD0)
+FF_D3D_TRACE(8216CBE0)
+FF_D3D_TRACE(8216DE10)
+FF_D3D_TRACE(8216DE18)
+FF_D3D_TRACE(8216EAA8)
+FF_D3D_TRACE(8216F6C8)
+FF_D3D_TRACE(8216F6E0)
+FF_D3D_TRACE(8216F6F8)
+FF_D3D_TRACE(8216FD68)
+FF_D3D_TRACE(8216FD70)
+FF_D3D_TRACE(8216FD78)
+FF_D3D_TRACE(8216FD80)
+FF_D3D_TRACE(8216FD98)
+FF_D3D_TRACE(8216FDB0)
+FF_D3D_TRACE(8216FDC8)
+FF_D3D_TRACE(8216FDE0)
+FF_D3D_TRACE(8216FDE8)
+FF_D3D_TRACE(8216FDF0)
+FF_D3D_TRACE(8216FF50)
+FF_D3D_TRACE(8216FF68)
+FF_D3D_TRACE(8216FFB0)
+FF_D3D_TRACE(82171128)
+FF_D3D_TRACE(82171250)
+FF_D3D_TRACE(821715F0)
+FF_D3D_TRACE(82171650)
+FF_D3D_TRACE(82171688)
+FF_D3D_TRACE(82171718)
+FF_D3D_TRACE(821717A8)
+FF_D3D_TRACE(82171838)
+FF_D3D_TRACE(82171D40)
+FF_D3D_TRACE(82172858)
+FF_D3D_TRACE(82172F08)
+FF_D3D_TRACE(82172F18)
+FF_D3D_TRACE(82172F38)
+FF_D3D_TRACE(821730C8)
+FF_D3D_TRACE(82173A28)
+FF_D3D_TRACE(82173B48)
+FF_D3D_TRACE(82173BD8)
+FF_D3D_TRACE(82173C20)
+FF_D3D_TRACE(82174600)
+FF_D3D_TRACE(821748D8)
+FF_D3D_TRACE(821748E0)
+FF_D3D_TRACE(82174EA0)
+FF_D3D_TRACE(82174F18)
+FF_D3D_TRACE(82174F98)
+FF_D3D_TRACE(82174FE8)
+FF_D3D_TRACE(821750B0)
+FF_D3D_TRACE(82175100)
+FF_D3D_TRACE(82175F20)
+FF_D3D_TRACE(821767B0)
+FF_D3D_TRACE(82176B90)
+FF_D3D_TRACE(82177588)
+FF_D3D_TRACE(82177920)
+FF_D3D_TRACE(821779E0)
+FF_D3D_TRACE(82177B60)
+FF_D3D_TRACE(82177CC0)
+FF_D3D_TRACE(82178A58)
+FF_D3D_TRACE(821792C0)
+FF_D3D_TRACE(821799E0)
+FF_D3D_TRACE(8217AFB0)
+FF_D3D_TRACE(8217AFC8)
+FF_D3D_TRACE(8217D1F0)
+FF_D3D_TRACE(8217D248)
+FF_D3D_TRACE(8217D2E0)
+FF_D3D_TRACE(8217D478)
+FF_D3D_TRACE(82185548)
+FF_D3D_TRACE(82185968)
+FF_D3D_TRACE(82186290)

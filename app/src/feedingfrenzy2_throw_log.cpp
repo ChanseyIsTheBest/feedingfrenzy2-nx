@@ -48,10 +48,10 @@ std::string GuestString(const uint8_t* base, uint32_t address, size_t max) {
 
 }  // namespace
 
-// feedingfrenzy-nx (2026-10-26): Feeding Frenzy's _CxxThrowException is sub_822CD398 (20 call sites; it copies the
-// 32-byte template at 0x8204A46C with memcpy sub_822CD480 and raises through sub_822DF878 -> RtlRaiseException).
-extern "C" REX_FUNC(__imp__sub_822CD398);
-REX_HOOK_RAW(sub_822CD398) {  // _CxxThrowException
+// feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's _CxxThrowException is sub_821F7A88 (40 call sites; it copies the
+// 32-byte template at 0x82031370 with memcpy sub_821F4AC0 and raises through sub_8220A108 -> RtlRaiseException).
+extern "C" REX_FUNC(__imp__sub_821F7A88);
+REX_HOOK_RAW(sub_821F7A88) {  // _CxxThrowException
   const uint32_t object = ctx.r3.u32, info = ctx.r4.u32, from = uint32_t(ctx.lr);
   if (!info) {
     REXLOG_ERROR("[throw] C++ rethrow from {:08X} (object {:08X})", from, object);
@@ -73,5 +73,5 @@ REX_HOOK_RAW(sub_822CD398) {  // _CxxThrowException
                  what.empty() ? "" : ": ", what);
   }
   rex::FlushLogging();
-  __imp__sub_822CD398(ctx, base);
+  __imp__sub_821F7A88(ctx, base);
 }

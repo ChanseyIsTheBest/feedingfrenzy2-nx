@@ -19,7 +19,6 @@
 // Hand-written natives (C runtime routines).
 #include "cpu/hot/n_825F0AE0.h"
 #include "cpu/hot/n_825F10B0.h"
-#include "cpu/hot/n_822CCD58.h"
 #include "cpu/hot/n_822CEDF0.h"
 #include "cpu/hot/n_822CFFE0.h"
 
@@ -376,28 +375,23 @@ void Check(Hook& h, PPCContext& ctx, uint8_t* base) {
 // non-volatile registers, as assembly routines leave their scratch registers undefined), then the localized copies
 // (tools/localize_native.py --list app/src/cpu/hot/localized.txt writes their hook lines).
 
-// C runtime (feedingfrenzy-nx, 2026-10-26; tools/crt_signatures.py scan and tools/guest_code_hash.py):
-//   memset at 0x822CCC40 is byte for byte Peggle 2's 0x825F10B0 (160 bytes, FNV-1a 64 0x54D201DC8A21DABA, the code
-//   check of n_825F10B0.h), so its native applies here;
-//   memcpy at 0x822CD480 is another version (1056 bytes; Peggle 2's is 1160) with the same contract: r3 saved at
-//   -8(r1) and returned, a forward copy (no load or store below its pointers), no dcbz, 32-bit sizes and compares; so
-//   n_825F0AE0's native (which declines the overlaps a forward copy smears and the 4 GB wraps) applies under this
-//   routine's own size and hash (2026-10-26, the emulator profile: seventh).
-// The emulator profile's other C runtime routines (out/renut_tests/emu/prof1, docs/feedingfrenzy2-notes.md):
-//   strstr sub_822CCD58 (39 % of the main thread's samples), _stricmp sub_822CFFE0, memmove sub_822CEDF0.
-FEEDINGFRENZY2_HOT_HOOK(822CD480, feedingfrenzy2_cpu_native_memcpy, "Native CRT memcpy (sub_822CD480): host memcpy/memmove",
-                 feedingfrenzy2::hot::n_825F0AE0, &feedingfrenzy2::hot::n_825F0AE0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 1056,
-                 0xA7EAD6E565BDE9F2ull)
-FEEDINGFRENZY2_HOT_HOOK(822CCD58, feedingfrenzy2_cpu_native_strstr, "Native CRT strstr (sub_822CCD58): host strstr",
-                 feedingfrenzy2::hot::n_822CCD58, &feedingfrenzy2::hot::n_822CCD58::Writes, feedingfrenzy2::hot::Cmp::kReturn, 128,
-                 0x5294550D483FD945ull)
-FEEDINGFRENZY2_HOT_HOOK(822CFFE0, feedingfrenzy2_cpu_native_stricmp, "Native CRT _stricmp (sub_822CFFE0)",
+// C runtime (feedingfrenzy2-nx, 2026-10-26; tools/crt_signatures.py scan and tools/guest_code_hash.py):
+//   memcpy at 0x821F4AC0 and memset at 0x821F4800 are byte for byte Peggle 2's 0x825F0AE0 / 0x825F10B0 (1160 and 160
+//   bytes, FNV-1a 64 0xEE0EAEB1E0584297 / 0x54D201DC8A21DABA, as in Peggle 1), so their natives apply here;
+//   memmove at 0x821F6720 is Feeding Frenzy's sub_822CEDF0 (the same 48 instructions; its tail call now reaches memcpy
+//   sub_821F4AC0), so n_822CEDF0.h applies under this routine's own hash;
+//   _stricmp at 0x824552D0 is byte for byte Feeding Frenzy's sub_822CFFE0 (88 bytes, the same hash).
+// Feeding Frenzy's strstr native has no match in this executable.
+FEEDINGFRENZY2_HOT_HOOK(821F4AC0, feedingfrenzy2_cpu_native_memcpy, "Native CRT memcpy (sub_821F4AC0): host memcpy/memmove",
+                 feedingfrenzy2::hot::n_825F0AE0, &feedingfrenzy2::hot::n_825F0AE0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 1160,
+                 0xEE0EAEB1E0584297ull)
+FEEDINGFRENZY2_HOT_HOOK(824552D0, feedingfrenzy2_cpu_native_stricmp, "Native CRT _stricmp (sub_824552D0)",
                  feedingfrenzy2::hot::n_822CFFE0, &feedingfrenzy2::hot::n_822CFFE0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 88,
                  0x214392DE394E0692ull)
-FEEDINGFRENZY2_HOT_HOOK(822CEDF0, feedingfrenzy2_cpu_native_memmove, "Native CRT memmove (sub_822CEDF0): host memmove",
+FEEDINGFRENZY2_HOT_HOOK(821F6720, feedingfrenzy2_cpu_native_memmove, "Native CRT memmove (sub_821F6720): host memmove",
                  feedingfrenzy2::hot::n_822CEDF0, &feedingfrenzy2::hot::n_822CEDF0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 192,
-                 0xA554986653AAE325ull)
-FEEDINGFRENZY2_HOT_HOOK(822CCC40, feedingfrenzy2_cpu_native_memset, "Native CRT memset (sub_822CCC40): host memset",
+                 0x23964655F75BF2A0ull)
+FEEDINGFRENZY2_HOT_HOOK(821F4800, feedingfrenzy2_cpu_native_memset, "Native CRT memset (sub_821F4800): host memset",
                  feedingfrenzy2::hot::n_825F10B0, &feedingfrenzy2::hot::n_825F10B0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 160,
                  0x54D201DC8A21DABAull)
 

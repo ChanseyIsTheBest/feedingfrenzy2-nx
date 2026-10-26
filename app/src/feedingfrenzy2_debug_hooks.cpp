@@ -18,12 +18,12 @@
 REXCVAR_DEFINE_UINT32(feedingfrenzy2_test_seed, 0, "FeedingFrenzy2",
                       "Test runs: every random generator of the game seeded with this value (0 = the game's own seeds)");
 
-// feedingfrenzy-nx (2026-10-26): Feeding Frenzy's random numbers are the CRT's: srand sub_822CCCE0 stores its seed in the
-// thread's data (_getptd sub_822CEB30, +20) and rand sub_822CCD10 steps it (`lis 3; ori 0x43FD`: 214013, then
+// feedingfrenzy-nx (2026-10-26): Feeding Frenzy 2's random numbers are the CRT's (Feeding Frenzy's code): srand sub_821F4788 stores its seed in the
+// thread's data (+20) and rand sub_821F47B8 steps it (`lis 3; ori 0x43FD`: 214013, then
 // + 2531011, bits 16-30). With feedingfrenzy2_test_seed != 0 every srand gets that seed instead: the same fish in every
 // run (the deterministic PC runs that compare the natives with the generated code, docs/feedingfrenzy2-notes.md).
-extern "C" REX_FUNC(__imp__sub_822CCCE0);
-REX_HOOK_RAW(sub_822CCCE0) {  // srand
+extern "C" REX_FUNC(__imp__sub_821F4788);
+REX_HOOK_RAW(sub_821F4788) {  // srand
   if (const uint32_t seed = REXCVAR_GET(feedingfrenzy2_test_seed)) {
     static bool logged = false;
     if (!logged) {
@@ -33,5 +33,5 @@ REX_HOOK_RAW(sub_822CCCE0) {  // srand
     }
     ctx.r3.u64 = seed;
   }
-  __imp__sub_822CCCE0(ctx, base);
+  __imp__sub_821F4788(ctx, base);
 }

@@ -3895,7 +3895,7 @@ VertexDeclarationRecord &NoDeclaration() {
 // InitializeApiState sets it up the same way; it is no record of ours. Its D3DVERTEXELEMENT9s (12 bytes each, ended by
 // D3DDECL_END) are at +52 of the declaration, inside the device snapshot, so a draw reads them from its own snapshot.
 // One record per distinct element list (a handful of FVFs).
-constexpr u32 kDeviceDeclarationOffset = 0x3100;
+constexpr u32 kDeviceDeclarationOffset = 0x2FA0;
 constexpr u32 kDeclarationElementsOffset = 52;
 constexpr u32 kDeviceDeclarationMaxElements = 15;  // stays below the FVF word at +0x3208
 
@@ -4156,14 +4156,14 @@ bool DrawStateLocked(const u8 *device_state, const DrawCall &call, const ReplayC
     return false;  // missing from the shader cache (captured for the next build)
 
   // sa2-nx (2026-10-20, sa2_renut_chain_reuse): the previous chain draw's targets when the device's target words (bytes
-  // 12792-12811) did not change, no target was built, retired or rebound since (the surface epoch), and the targets'
+  // 12440-12459) did not change, no target was built, retired or rebound since (the surface epoch), and the targets'
   // descriptor words (which GetHostSurfaceLocked reads in guest memory) are the same.
   static const bool targets_reuse_on = REXCVAR_GET(sa2_renut_chain_reuse);
   static const bool targets_verify = targets_reuse_on && REXCVAR_GET(sa2_renut_chain_reuse_verify);
   const ChainHint &chain = g_chain_hint;
   Targets targets;
   bool targets_reused = false;
-  if (targets_reuse_on && chain.seq && chain.seq == g_targets_reuse.seq + 1 && !ChainChanged(chain, 12792, 12811) &&
+  if (targets_reuse_on && chain.seq && chain.seq == g_targets_reuse.seq + 1 && !ChainChanged(chain, 12440, 12459) &&
       g_targets_reuse.epoch == SurfaceEpochLocked()) {
     targets_reused = true;
     for (u32 i = 0; targets_reused && i <= d3d::kMaxRenderTargets; ++i) {
@@ -4274,7 +4274,7 @@ bool DrawStateLocked(const u8 *device_state, const DrawCall &call, const ReplayC
   g_handover_targets = &targets;  // banjo-nx (2026-10-19, banjo_deko3d_depth_handover)
   // sa2-nx (2026-10-20, sa2_renut_chain_reuse): the previous chain draw's texture and sampler words when FillTextures'
   // memo would answer every bound slot as it did then: the device's fetch constants and texture words unchanged
-  // (bytes 1152-1775, 12896-12999), the same slots, frame, texture and depth epochs and depth target, and each bound
+  // (bytes 1152-1775, 12544-12647), the same slots, frame, texture and depth epochs and depth target, and each bound
   // texture's header words the same. The memo hit's work is done again for each slot (its transitions and counters).
   struct TexturesReuse {
     uint64_t seq = 0, frame = 0, epoch = 0, depth_epoch = 0;
@@ -4287,7 +4287,7 @@ bool DrawStateLocked(const u8 *device_state, const DrawCall &call, const ReplayC
   };
   static TexturesReuse treuse;
   bool textures_reused = targets_reuse_on && chain.seq && chain.seq == treuse.seq + 1 && treuse.mask == texture_mask &&
-                         !ChainChanged(chain, 1152, 1775) && !ChainChanged(chain, 12896, 12999) &&
+                         !ChainChanged(chain, 1152, 1775) && !ChainChanged(chain, 12544, 12647) &&
                          treuse.frame == TextureFrameLocked() && treuse.epoch == g_texture_epoch &&
                          treuse.depth_epoch == g_depth_epoch && treuse.depth == targets.depth;
   for (u32 r = 0; textures_reused && r < d3d::kTextureFetchSlots; ++r) {
@@ -5360,8 +5360,8 @@ void ClearStateLocked(const u8 *device_state, u32 flags, const ClearRect *rect,
 
   // D3D clamps clears to the viewport (CDevice viewport floats at 0x3168).
   ClearRect r = rect ? *rect : ClearRect{0, 0, int32_t(targets.width), int32_t(targets.height)};
-  const float vx = device.F32(0x32C8), vy = device.F32(0x32CC);
-  const float vw = device.F32(0x32D0), vh = device.F32(0x32D4);
+  const float vx = device.F32(0x3168), vy = device.F32(0x316C);
+  const float vw = device.F32(0x3170), vh = device.F32(0x3174);
   if (vw > 0.0f && vh > 0.0f) {
     int32_t vx2 = int32_t(vx + vw), vy2 = int32_t(vy + vh);
     // A target grown for tiling: D3D bounds the viewport by the tile-sized

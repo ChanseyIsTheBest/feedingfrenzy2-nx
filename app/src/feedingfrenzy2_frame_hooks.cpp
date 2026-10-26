@@ -1,8 +1,8 @@
 // Counts the frames the game presents, for the video recorder (feedingfrenzy2_capture.cpp waits for each new one).
 //
-// D3DDevice_Swap is sub_822F5EB0: the only function of default.xex that calls the kernel's VdSwap (found by searching
-// the generated code for __imp__VdSwap, 2026-10-21; Peggle 1's was sub_824430C8, Peggle 2's sub_8261FE50). The hook
-// calls the original and counts; it changes no PPC register.
+// The frame is D3DDevice_Present (feedingfrenzy2-nx: sub_8217EAD0, which ends with D3DDevice_Swap sub_8217E538, the only
+// function of default.xex that calls the kernel's VdSwap). The hook calls the original and counts; it changes no PPC
+// register.
 //
 // How the wrapping works: each recompiled function sub_XXXXXXXX is a weak alias of __imp__sub_XXXXXXXX. The strong
 // definition here wins for every caller (direct, and indirect through the function table), and __imp__ is still the
@@ -57,10 +57,14 @@ namespace {
 // Peggle 2's 21256 with two shifts, -24 from 11584 and -16 from 13600, so Peggle 2's +14000 is +13984 here). Peggle 1's
 // XDK 7776 had it at +13596, as N&B's 7645.
 // feedingfrenzy-nx (2026-10-26): not found yet in XDK 2571's device: 0 = not used (no 60 fps forcing).
-constexpr uint32_t kDeviceIntervalOffset = 0;
+// feedingfrenzy2-nx (2026-10-26): +13596 in Feeding Frenzy 2's XDK, as Peggle 1's: D3DDevice_SetRenderState_PresentInterval
+// sub_82172F08 is `stw r4,13596(r3); blr` (Peggle 1's sub_824358F0, the same two instructions). Logged at Present; the
+// 60 fps forcing stays off (kForce60) until the game's frame step is known to run by elapsed time.
+constexpr uint32_t kDeviceIntervalOffset = 13596;
+constexpr bool kForce60 = false;
 
 bool Fps60() {
-  static const bool on = REXCVAR_GET(feedingfrenzy2_fps) >= 60 && kDeviceIntervalOffset != 0;
+  static const bool on = REXCVAR_GET(feedingfrenzy2_fps) >= 60 && kDeviceIntervalOffset != 0 && kForce60;
   return on;
 }
 
@@ -182,8 +186,11 @@ void PaceRenutSwap(uint32_t interval) {
 // feedingfrenzy-nx (2026-10-26): the frame is Feeding Frenzy's D3DDevice_Present (sub_820B17B0, once a frame), which
 // calls D3DDevice_Swap (sub_820B1260, the only caller of VdSwap). Renut's renderer replaces Present (its Swap is
 // native, so the guest's never runs): this hook shares the address with it (BANJO_RENUT_HOOK_SHARED, draw.cpp).
-extern "C" REX_FUNC(__imp__sub_820B17B0);
-REX_HOOK_RAW(sub_820B17B0) {  // D3DDevice_Present
+// feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's D3DDevice_Present is sub_8217EAD0 (Peggle 1's sub_824436D8: 76
+// instructions, it copies the 28-byte block at +12648, resolves through sub_821799E0, kicks off through sub_82176B90 and
+// ends with D3DDevice_Swap sub_8217E538 (the only VdSwap caller) with r4 = +14828, r5 = device + 13640).
+extern "C" REX_FUNC(__imp__sub_8217EAD0);
+REX_HOOK_RAW(sub_8217EAD0) {  // D3DDevice_Present
   // Which presentation interval the game asks for (1 = every vblank, 2 = every second one), when it changes.
   if (kDeviceIntervalOffset) {
     static uint32_t last_interval = ~0u;
@@ -212,7 +219,7 @@ REX_HOOK_RAW(sub_820B17B0) {  // D3DDevice_Present
     uint8_t interval_bytes[4];
     std::memcpy(interval_bytes, base + ctx.r3.u32 + kDeviceIntervalOffset, 4);
     if (!kDeviceIntervalOffset) interval_bytes[3] = 1;
-    renut_native_sub_820B17B0(ctx, base);  // Renut's Present (resolves and presents)
+    renut_native_sub_8217EAD0(ctx, base);  // Renut's Present (resolves and presents)
     // Renut's Swap does not reach the kernel's VdSwap, which advances the SDK's frame clock (clock_per_swap_hz, the
     // deterministic runs that compare Renut with the emulated GPU frame for frame; a no-op otherwise).
     rex::chrono::Clock::NotifyGuestSwap();
@@ -222,7 +229,7 @@ REX_HOOK_RAW(sub_820B17B0) {  // D3DDevice_Present
     return;
   }
 #endif
-  __imp__sub_820B17B0(ctx, base);
+  __imp__sub_8217EAD0(ctx, base);
   g_feedingfrenzy2_game_frames.fetch_add(1, std::memory_order_relaxed);
 #if FEEDINGFRENZY2_NATIVE_RENDERER
   // The native ring thread waits in a WAIT_REG_MEM for the game's frame pacing word most of each frame

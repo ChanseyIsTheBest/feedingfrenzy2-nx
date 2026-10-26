@@ -26,34 +26,34 @@ constexpr u32 kPendingFetch = 3;    // fetch constants, tessellation, points
 constexpr u32 kPendingMisc = 4;     // m_MiscPacket and friends
 
 // Render state storage in the CDevice-private area.
-constexpr u32 kBlendState = 0x2FE0;       // D3D blend: src 0-4, op 5-7, dest 8-12, alpha at 16+
-constexpr u32 kBlendFlags = 0x2FE4;       // 31 blend enable, 30 separate alpha, HiZ fields
-constexpr u32 kScissorTestEnable = 0x2FE8;
-constexpr u32 kColorWriteEnable = 0x2FEC;  // [4]
-constexpr u32 kZEnable = 0x2FFC;
-constexpr u32 kStencilEnable = 0x3000;
-constexpr u32 kPointSpriteEnable = 0x3004;
-constexpr u32 kPointSize = 0x300C;
-constexpr u32 kPointSizeMin = 0x3010;
-constexpr u32 kPointSizeMax = 0x3014;
-constexpr u32 kHighPrecisionBlend = 0x3060;  // [4]
-constexpr u32 kPresentInterval = 0x36A0;
-constexpr u32 kBehaviorFlags2 = 0x5F38;
+constexpr u32 kBlendState = 0x2E48;       // D3D blend: src 0-4, op 5-7, dest 8-12, alpha at 16+
+constexpr u32 kBlendFlags = 0x2E4C;       // 31 blend enable, 30 separate alpha, HiZ fields
+constexpr u32 kScissorTestEnable = 0x2E50;
+constexpr u32 kColorWriteEnable = 0x2E54;  // [4]
+constexpr u32 kZEnable = 0x2E64;
+constexpr u32 kStencilEnable = 0x2E68;
+constexpr u32 kPointSpriteEnable = 0x2E6C;
+constexpr u32 kPointSize = 0x2E74;
+constexpr u32 kPointSizeMin = 0x2E78;
+constexpr u32 kPointSizeMax = 0x2E7C;
+constexpr u32 kHighPrecisionBlend = 0x2EFC;  // [4]
+constexpr u32 kPresentInterval = 0x351C;
+constexpr u32 kBehaviorFlags2 = 0x5DAC;
 // Sampler state storage, a byte per sampler.
-constexpr u32 kMaxAnisotropy = 0x2A70;
-constexpr u32 kMaxMipLevel = 0x302C;
-constexpr u32 kMinMipLevel = 0x3046;
-constexpr u32 kZFilter = 0x2A8A;  // bit 0 mag, 1 min, 2 separate Z filtering
+constexpr u32 kMaxAnisotropy = 0x2E94;
+constexpr u32 kMaxMipLevel = 0x2EAE;
+constexpr u32 kMinMipLevel = 0x2EC8;
+constexpr u32 kZFilter = 0x2EE2;  // bit 0 mag, 1 min, 2 separate Z filtering
 // Viewport (SetViewport's arguments, clamped) and the register image values.
-constexpr u32 kViewport = 0x32C8;  // x, y, width, height, min z, max z, 0
+constexpr u32 kViewport = 0x3168;  // x, y, width, height, min z, max z, 0
 constexpr u32 kVportXScale = 0x2908;
 constexpr u32 kVportZScale = 0x2918;
-constexpr u32 kStreamDeclStrides = 0x2FD0;  // u8[16]
-constexpr u32 kVertexDeclaration = 0x2FB8;
-constexpr u32 kVertexShader = 0x32F8;
-constexpr u32 kPixelShader = 0x32F4;
-constexpr u32 kGprAllocation = 0x2B28;
-constexpr u32 kScreenExtentQueryMode = 0x2B24;
+constexpr u32 kStreamDeclStrides = 0x2E38;  // u8[16]
+constexpr u32 kVertexDeclaration = 0x2E2C;
+constexpr u32 kVertexShader = 0x3198;
+constexpr u32 kPixelShader = 0x3194;
+constexpr u32 kGprAllocation = 0x2AA8;
+constexpr u32 kScreenExtentQueryMode = 0x2AA4;
 
 constexpr float kInv255 = 0.003921568859368563f;  // flt_82000D08
 
@@ -727,47 +727,15 @@ constexpr SamplerStateFn kSamplerStateFns[kSamplerStates] = {
 };
 
 // N&B's state tables: {getter, setter, default} per state.
-// bejeweled3-nx: Bejeweled 3's tables, found by N&B's 101 / 20 default values (stride 12; the only match each), loaded
-// only by D3D_InitializeApiState sub_82310D70. Peggle 2 0x828DFDB8 / 0x828E0278, Peggle 1 0x82F85848 / 0x82F85D08.
-// feedingfrenzy-nx (2026-10-26): XDK 2571's D3D_InitializeApiState does not have N&B's 101 / 20 entries in N&B's
-// order, and only the defaults (field 2) matter here (the game calls each state function directly; nothing reads
-// the device's getter / setter tables). The defaults are Bejeweled 3's tables' (0x82AD01E8 / 0x82AD06A8, the
-// order of kRenderStateFns / kSamplerStateFns), copied here; getter and setter words are 0.
-constexpr u32 kRenderStateTable = 0;
-constexpr u32 kSamplerStateTable = 0;
-constexpr u32 kRenderStateDefaults[101] = {
-    0x00000000u, 0x00000003u, 0x00000001u, 0x00000000u, 0x00000000u, 0x00000000u, 0x3F800000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000001u, 0x00000003u, 0x00000001u, 0x00000000u, 0x00000006u, 0x00000000u,
-    0x00000000u, 0xFFFFFFFFu, 0x00000001u, 0x00000000u, 0x00000000u, 0x00000001u, 0x00000000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000007u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u,
-    0x00000007u, 0x00000000u, 0xFFFFFFFFu, 0xFFFFFFFFu, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000007u,
-    0x00000000u, 0xFFFFFFFFu, 0xFFFFFFFFu, 0x00000000u, 0x3F800000u, 0x3F800000u, 0x00000000u, 0x42800000u,
-    0x00000001u, 0xFFFFFFFFu, 0x00000000u, 0x00000000u, 0x00000000u, 0x0000000Fu, 0x0000000Fu, 0x0000000Fu,
-    0x0000000Fu, 0x00000001u, 0x3F800000u, 0x3F800000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000001u, 0x00000000u, 0x00000000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000000u, 0x0000FFFFu, 0x00000000u, 0x00000087u, 0x40000000u, 0x40000000u,
-    0x3F800000u, 0x3F800000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u,
-    0x00000002u, 0x00000002u, 0x00000001u, 0x3F800000u, 0x00000001u,
-};
-constexpr u32 kSamplerStateDefaults[20] = {
-    0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000000u, 0x00000002u, 0x00000000u,
-    0x00000000u, 0x00000001u, 0x00000000u, 0x00000000u, 0x00000000u, 0x0000000Du, 0x00000000u, 0x00000000u,
-    0x00000000u, 0x00000000u, 0x00000000u, 0x00000001u,
-};
+// feedingfrenzy2-nx (2026-10-26): Feeding Frenzy 2's, found by Peggle 1's 101 / 20 defaults at stride 12 (the only
+// match each); every getter / setter pair maps one to one onto Peggle 1's (out/renut_map/state_tables.txt).
+constexpr u32 kRenderStateTable = 0x824F7608;  // peggle1-nx: 0x82F85848 (N&B 0x82E506F0)
+constexpr u32 kSamplerStateTable = 0x824F7AC8;  // peggle1-nx: 0x82F85D08 (N&B 0x82E50BD0)
 constexpr u32 kTextureSamplers = 26;
 
 u32 TableWord(u32 table, u32 index, u32 field) {
-  if (!table)  // feedingfrenzy-nx: no guest table (getter / setter words 0; defaults below)
-    return 0;
   const auto *p = GuestPtr<const be_u32>(table + index * 12 + field * 4);
   return p ? u32(*p) : 0;
-}
-u32 RenderStateDefault(u32 index) {
-  return index < 101 ? kRenderStateDefaults[index] : 0;
-}
-u32 SamplerStateDefault(u32 index) {
-  return index < 20 ? kSamplerStateDefaults[index] : 0;
 }
 
 }  // namespace
@@ -920,13 +888,13 @@ void InitializeStateTables(Device device) {
   for (u32 i = 0; i < kRenderStates; ++i) {
     device.SetW(off::SetRenderStateCall + i * 4, TableWord(kRenderStateTable, i, 1));
     device.SetW(off::GetRenderStateCall + i * 4, TableWord(kRenderStateTable, i, 0));
-    kRenderStateFns[i](device, RenderStateDefault(i));
+    kRenderStateFns[i](device, TableWord(kRenderStateTable, i, 2));
   }
   for (u32 sampler = 0; sampler < kTextureSamplers; ++sampler) {
     for (u32 i = 0; i < kSamplerStates; ++i) {
       device.SetW(off::SetSamplerStateCall + i * 4, TableWord(kSamplerStateTable, i, 1));
       device.SetW(off::GetSamplerStateCall + i * 4, TableWord(kSamplerStateTable, i, 0));
-      kSamplerStateFns[i](device, sampler, SamplerStateDefault(i));
+      kSamplerStateFns[i](device, sampler, TableWord(kSamplerStateTable, i, 2));
     }
     SetTexture(device, sampler, 0);
   }
@@ -985,11 +953,6 @@ void SetTexture(Device device, u32 sampler, u32 texture) {
     dword4 = Insert(dword4, min_level, 6, 4);
     device.SetW(Fetch(sampler, 4), dword4);
     device.Dirty(kPendingFetch, FetchBit(sampler));
-  } else {
-    // peggle2-nx: Peggle 2's SetTexture (sub_8261D0A0, XDK 21256) clears a NULL texture's fetch constant type bits.
-    // bejeweled3-nx: so does Bejeweled 3's (sub_82302BC8: `lwzx; rlwinm r10,r10,0,0,29; stwx` on fetch word 0 when
-    // the texture is NULL; the same code as Peggle 2's but for the device offsets). N&B's and Peggle 1's do not.
-    device.SetW(Fetch(sampler, 0), device.W(Fetch(sampler, 0)) & ~3u);
   }
   device.SetW(off::Textures + sampler * 4, texture);
   if (previous)
@@ -1069,7 +1032,7 @@ bool TilingBoundSurfaces(Device device) {
 void UpdateTilePredicated(Device device) {
   const u8 flags = device.B(off::Flags);
   const bool predicated = !device.W(off::PredicationSet) && !(flags & 0x08) && !(flags & 0x04) &&
-                          !device.B(0x30FB) && TilingBoundSurfaces(device);
+                          !device.B(0x2F9B) && TilingBoundSurfaces(device);
   device.SetB(off::Flags, u8((flags & 0xFE) | (predicated ? 1 : 0)));
 }
 
@@ -1240,7 +1203,7 @@ void SetDepthStencilSurface(Device device, u32 surface) {
     device.SetW(off::HiControl, hi_control);
     device.SetB(off::Flags2, u8(Insert(device.B(off::Flags2), hi_control, 5, 1)));
     if ((device.B(off::Flags3) & 0x20) && TilingBoundSurfaces(device))
-      device.SetW(off::SurfaceInfo, Insert(device.W(off::SurfaceInfo), device.W(0x34D4), 18, 14));
+      device.SetW(off::SurfaceInfo, Insert(device.W(off::SurfaceInfo), device.W(0x3374), 18, 14));
     device.Dirty(kPendingStates, Bit(55) | 0x100 | 0x20000);
   } else {
     device.SetW(off::HiControl, device.W(off::HiControl) & ~0xFu);
@@ -1401,9 +1364,7 @@ namespace {
 
 // Per D3DFORMAT (low 6 bits) its format description; 0xF00 marks a float
 // depth format (word_820052F8).
-// bejeweled3-nx: 0x82001620 (GetLevelLayout sub_823018B0, GetSubresourceLayout, Lock2DSurface, FindTextureSize, ...:
-// `lis r11,-32256; addi r11,r11,5664`, 7 aligned uses where Peggle 2 has 0x8207A590); 128 bytes identical to N&B's.
-constexpr u32 kFormatTable = 0x8200C670;  // feedingfrenzy-nx: the same 128 bytes as Bejeweled 3's 0x82001620 (N&B 0x820052F8)
+constexpr u32 kFormatTable = 0x82018A90;  // feedingfrenzy2-nx: the same 128 bytes (peggle1-nx 0x8206FBB8, N&B 0x820052F8)
 // The register packets between RB_COPY_CONTROL and RB_COPY_DEST_INFO.
 constexpr u32 kCopyControl = 0x2A18;
 constexpr u32 kCopyDestInfo = 0x2A24;
@@ -1646,14 +1607,14 @@ void Resolve(Device device, u32 flags, u32 dest_texture, float clear_z, u32 clea
 namespace {
 
 constexpr u32 kExportAddress = 0x2898;       // [Index]: the stream's GPU address
-constexpr u32 kExportCount = 0x3640;         // BeginExports not yet ended
-constexpr u32 kExportNanVertexDone = 0x3644;
-constexpr u32 kExportFlags = 0x3648;
+constexpr u32 kExportCount = 0x34C0;         // BeginExports not yet ended
+constexpr u32 kExportNanVertexDone = 0x34C4;
+constexpr u32 kExportFlags = 0x34C8;
 // N&B's switches for the two GPU workarounds below (dword_82FAD204/208).
-// bejeweled3-nx: DoBeginExportNanVertex sub_822F92C8 reads [0x82B103B0] (`lis r11,-32079; lwz r11,944(r11)`) where
-// Peggle 2's sub_82616D78 reads 0x82D75090; DoEndExport512Pixels sub_822F9420 reads [0x82B103B4] (Peggle 2 0x82D75094).
-constexpr u32 kSkipExportNanVertex = 0;  // feedingfrenzy-nx: not in XDK 2571 (no export)
-constexpr u32 kSkipExport512Pixels = 0;  // feedingfrenzy-nx: not in XDK 2571 (no export)
+// feedingfrenzy2-nx (2026-10-26): XDK 6534 has no DoBeginExportNanVertex (Peggle 1's sub_82441D08, the reader of
+// these words, matches nothing here): 0 = not read.
+constexpr u32 kSkipExportNanVertex = 0;  // peggle1-nx: 0x83024420 (N&B 0x82FAD204)
+constexpr u32 kSkipExport512Pixels = 0;  // peggle1-nx: 0x83024424 (N&B 0x82FAD208)
 
 u32 GuestWord(u32 va) {
   const auto *p = GuestPtr<const be_u32>(va);
@@ -1705,12 +1666,7 @@ void BeginExport(Device device, u32 index, u32 resource, u32 flags) {
   }
   device.SetW(kExportAddress + index * 4, GpuAddress(address));
   device.Dirty(kPendingStates, Bit(51 - index));
-  // peggle2-nx: Peggle 2's BeginExport (sub_82617258, XDK 21256) draws the NaN vertex whenever no export is active
-  // (N&B's: only with flags 0xA or when EndExport had not drawn one).
-  // bejeweled3-nx: so does Bejeweled 3's (sub_822F97A8: with [+13888] == 0 it calls DoBeginExportNanVertex
-  // sub_822F92C8 for any flags, after an EVENT_WRITE for 0xA; it never reads +13892, the "done" word, which it only
-  // clears). Peggle 1's was N&B's.
-  if (!device.W(kExportCount))
+  if (!device.W(kExportCount) && (flags == 0xA || !device.W(kExportNanVertexDone)))
     ExportNanVertex(device);
   device.SetW(kExportFlags, flags & 3);
   device.SetW(kExportNanVertexDone, 0);
