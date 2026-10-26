@@ -123,3 +123,48 @@ generated-code self-checks 0 differences.
   Renut's render thread 2.2-2.6 ms a frame, no shader missing, no error in the log.
 - **Delivered:** `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/` (NRO `55f581e0...`, the game pack,
   README.txt); ELF and map `out/nx/elf/feedingfrenzy2_dev_20261026_1815.*`.
+
+## Optimising the hot functions (2026-10-26, from the emulator)
+
+The user: "do some optimisation you did for feeding frenzy 1 on 2; if you can only get 60 functions that's fine, just
+hand optimise the first couple and follow the process for the others". The method is docs/optimising-functions.md, as
+in Feeding Frenzy 1.
+
+- **Profile** (Ryujinx `prof1`: 330 s, Stage 1 played with the stick the whole time, `switch_profile_report` /
+  `switch_profile_stacks`; `out/renut_tests/emu/prof1/rex_profile.log`, map
+  `out/nx/elf/feedingfrenzy2_dev_20261026_1815.map`; `tools/switch_hot_functions.py --top 5000 --from-report 4`, all
+  guest threads): 238 generated functions sampled, 170 of them eligible (tiny leaves, one function with atomics
+  `sub_821E06A0` and the addresses our sources hook left out; `sub_82125138`, a bare `blr` called through pointers, is
+  the hottest tiny one). The main thread is about 4-5 ms of a 16.7 ms frame: the game waits for the frame most of it.
+- **Hand-written natives** (the top of the profile):
+  - `h_821E7AC8.h` (152 samples, the hottest): Feeding Frenzy 1's `sub_82256198` with other offsets (this->[268] |=
+    each child's [268] over the vector at +308, the debug iterator's traps, then a tail call of the virtual method
+    348 / 4): begin / end loaded once, the running OR in a register (still stored every iteration), the trap cases run
+    the copy before any store;
+  - `h_82106E48.h` (76 samples, with its callee `sub_821062A0` another 76): a ring buffer's back() through an iterator
+    built in the frame; the leaf callee inline, every register it leaves behind reproduced, the frame's stores kept,
+    the four trap cases running the copy before any store;
+  - `n_820B00B8.h`, **wmemcmp** (52 samples): the host's memcmp over 2n bytes (big-endian halfwords compare as their
+    bytes), the result 1 or `0x00000000FFFFFFFF` as the original's `subfc / subfe / rlwinm / addi` gives it; registered
+    with its size and hash like the CRT natives (`Cmp::kReturn`), in `hand.txt`.
+- **Localized copies:** the hottest 60 eligible functions (35 in `localized.txt`, 25 in `localized_bulk.txt`; the two
+  hand-written ones among them as their reference). **Write-backs of the changed registers only**
+  (tools/hand_native_dirty_sync.py): 1,762 register stores kept of 4,066 in the 57 copies it limits (56 % removed);
+  smart sync at 41 of 236 call sites (464 write-back / reload pairs fewer). `sub_821C8C88` and `sub_821FA8C0` (jump
+  tables) and `sub_821667B4` (an SEH funclet's XER use) keep all of their write-backs; 15 copies inline tiny callees.
+- **Checks:**
+  - PC verify mode (`verify1`, Renut, Stage 1 played, 150 s): 37,275,392 checked calls of the 11 leaf copies and the
+    C runtime natives, wmemcmp's 7,119,616 among them, 0 differences. Calls in the run: `h_82106E48` 33.7 million,
+    `h_821E7AC8` 6.4 million (copies with calls: audited in their headers against their copies).
+  - `tools/check_switch_build.py`: all checks passed (the streaming copies' lookups, 291 vector fused multiply-adds).
+- **Measured** in Ryujinx with the same script and length:
+  - `prof2` (the optimised NRO) against `prof3` (the same NRO with the 61 new natives switched off by their keys,
+    so the same build and code layout): the 61 functions 1,409 samples -> 931 (the rest of the guest code 638 -> 596:
+    0.71 normalised); the main thread's median 5.27 -> 4.94 ms a game frame. `h_821E7AC8` 205 -> 154, back() with its
+    callee 311 -> 130, wmemcmp 55 -> 11. `sub_820B0708` rose (55 -> 81) while its call chain (the inline wcslen,
+    `sub_820B0488`, wmemcmp) fell 174 -> 148: the time moved between them.
+  - `prof2` dipped to 53-57 fps in some windows where `prof3` held 60: with the main thread at 5 ms of 16.7, those are
+    the emulator host's (the display log shows the misses), not the guest code's. Against `prof1` (the earlier NRO)
+    the scenes differ too much to compare whole frames (Feeding Frenzy 1's notes: the same).
+- Delivered: the optimised NRO (`4ae71e4e...`) in `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`, replacing
+  the first one; ELF and map `out/nx/elf/feedingfrenzy2_dev_opt_20261026.*`. A development build (no LTO, no PGO).

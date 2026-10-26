@@ -21,6 +21,7 @@
 #include "cpu/hot/n_825F10B0.h"
 #include "cpu/hot/n_822CEDF0.h"
 #include "cpu/hot/n_822CFFE0.h"
+#include "cpu/hot/n_820B00B8.h"
 
 // The guard is off by default since 2026-10-14 (before: the first 256 calls of each thread, then 1 in 4096). The user,
 // on the stutter its checks of the Wwise mixing copies caused: "it's a release build do we really need self-checks?".
@@ -382,6 +383,8 @@ void Check(Hook& h, PPCContext& ctx, uint8_t* base) {
 //   sub_821F4AC0), so n_822CEDF0.h applies under this routine's own hash;
 //   _stricmp at 0x824552D0 is byte for byte Feeding Frenzy's sub_822CFFE0 (88 bytes, the same hash).
 // Feeding Frenzy's strstr native has no match in this executable.
+// feedingfrenzy2-nx (2026-10-26, the emulator profile out/renut_tests/emu/prof1): wmemcmp sub_820B00B8 (fourth, 52
+// samples; n_820B00B8.h), registered with its size and hash like the CRT routines above.
 FEEDINGFRENZY2_HOT_HOOK(821F4AC0, feedingfrenzy2_cpu_native_memcpy, "Native CRT memcpy (sub_821F4AC0): host memcpy/memmove",
                  feedingfrenzy2::hot::n_825F0AE0, &feedingfrenzy2::hot::n_825F0AE0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 1160,
                  0xEE0EAEB1E0584297ull)
@@ -394,6 +397,10 @@ FEEDINGFRENZY2_HOT_HOOK(821F6720, feedingfrenzy2_cpu_native_memmove, "Native CRT
 FEEDINGFRENZY2_HOT_HOOK(821F4800, feedingfrenzy2_cpu_native_memset, "Native CRT memset (sub_821F4800): host memset",
                  feedingfrenzy2::hot::n_825F10B0, &feedingfrenzy2::hot::n_825F10B0::Writes, feedingfrenzy2::hot::Cmp::kReturn, 160,
                  0x54D201DC8A21DABAull)
+
+FEEDINGFRENZY2_HOT_HOOK(820B00B8, feedingfrenzy2_cpu_native_wmemcmp, "Native wmemcmp (sub_820B00B8): host memcmp",
+                 feedingfrenzy2::hot::n_820B00B8, &feedingfrenzy2::hot::n_820B00B8::Writes, feedingfrenzy2::hot::Cmp::kReturn, 88,
+                 0xE27B4DBE20FB5B88ull)
 
 #include "../../generated/hot/localized_hooks.inc"
 

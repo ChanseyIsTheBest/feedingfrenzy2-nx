@@ -13,4 +13,39 @@
 # the user's two console profiles of Lightning (logs/rex/rex_profile.log of the 08:42 NRO and rex_profile (23).log of
 # the 09:29 NRO, reports 4 on; tools/switch_hot_functions.py with each build's map), samples of both summed:
 # feedingfrenzy-nx (2026-10-26, the user: "machine optimise around the top 100", "just use data from the emulator"): the hottest 35 generated functions of the Ryujinx profile out/renut_tests/emu/prof1 (all guest threads, 300 s of play).
-# feedingfrenzy2-nx (2026-10-26): empty until a profile of Feeding Frenzy 2 (Feeding Frenzy's entries removed).
+# feedingfrenzy2-nx (2026-10-26, the user: "do some optimisation you did for feeding frenzy 1 on 2", "60 functions is fine"): the hottest 35 eligible generated functions of the Ryujinx profile out/renut_tests/emu/prof1 (all guest threads, reports 4 on: Stage 1 with the stick, 330 s; map out/nx/elf/feedingfrenzy2_dev_20261026_1815.map). sub_821E7AC8 and sub_82106E48 are hand-written (h_*.h); their copies are the reference. Left out: tiny leaves, sub_821E06A0 (atomics), sub_820B00B8 (wmemcmp: a C-runtime-style native in feedingfrenzy2_hot_guest.cpp).
+821E7AC8 152 samples: all guest threads
+82106E48 76 samples: all guest threads
+821062A0 76 samples: all guest threads
+821E0CC8 40 samples: all guest threads
+821E0DB0 36 samples: all guest threads
+821CE688 36 samples: all guest threads
+821E0D40 32 samples: all guest threads
+821F41A0 32 samples: all guest threads
+821E7DE8 32 samples: all guest threads
+82472050 28 samples: all guest threads
+821E2F20 24 samples: all guest threads
+820B0708 20 samples: all guest threads
+820B14A8 20 samples: all guest threads
+821E3048 19 samples: all guest threads
+821E2B08 16 samples: all guest threads
+820D07C8 15 samples: all guest threads
+821E4A18 15 samples: all guest threads
+821E57D8 12 samples: all guest threads
+821C8C88 12 samples: all guest threads
+821F5020 12 samples: all guest threads
+82129620 12 samples: all guest threads
+821E75B8 12 samples: all guest threads
+82186FB0 12 samples: all guest threads
+821E4310 12 samples: all guest threads
+821DEE50 11 samples: all guest threads
+821E2B40 8 samples: all guest threads
+821F40C8 8 samples: all guest threads
+821FA8C0 8 samples: all guest threads
+820D77C0 8 samples: all guest threads
+820B58D0 8 samples: all guest threads
+821E4288 8 samples: all guest threads
+821E0B38 8 samples: all guest threads
+8220C9D8 8 samples: all guest threads
+821F30F8 8 samples: all guest threads
+821E3DF8 8 samples: all guest threads

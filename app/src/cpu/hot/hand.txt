@@ -6,3 +6,4 @@
 821F4AC0 CRT memcpy: hand-written native n_825F0AE0.h (Peggle 2's address; the same code here) (reads r3, r4, r5; returns r3)
 824552D0 CRT _stricmp: hand-written native n_822CFFE0.h (Feeding Frenzy's address; the same code) (reads r3, r4; returns r3)
 821F6720 CRT memmove: hand-written native n_822CEDF0.h (Feeding Frenzy's address; the same code) (reads r3, r4, r5; returns r3)
+820B00B8 wmemcmp: hand-written native n_820B00B8.h (reads r3, r4, r5; returns r3)
