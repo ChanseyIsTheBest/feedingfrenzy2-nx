@@ -168,3 +168,31 @@ in Feeding Frenzy 1.
     the scenes differ too much to compare whole frames (Feeding Frenzy 1's notes: the same).
 - Delivered: the optimised NRO (`4ae71e4e...`) in `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`, replacing
   the first one; ELF and map `out/nx/elf/feedingfrenzy2_dev_opt_20261026.*`. A development build (no LTO, no PGO).
+
+## Up to four players (2026-10-26)
+
+The user: "please add option to support/map controls for up to 4 players in feeding frenzy 2, just reuse code from
+peggle 2".
+
+- **Peggle 2's controller code is already this tree's.** The SDK came through Peggle 1 and Bejeweled 3 with Peggle 2's
+  (sa2-nx's) Switch driver: one slot per controller (handheld, players No1-No4) routed to the four guest users
+  (`SlotAssignment`), single Joy-Cons sideways (with the stick turned, Peggle 2 1.0.2's fix), the controller applet on
+  L + R + ZR, a button map per player (`input_p1_*` to `input_p4_*`), and the guest sign-in of controllers 2-4
+  (`xam_guest_signin`, on in the Switch defaults). Compared file by file with peggle2-nx: the input code is the same;
+  the kernel has Peggle 1's two later fixes on top (XUserGetName names a connected controller as its guest would be,
+  the leaderboard reads fail).
+- **The game's multiplayer:** Multiplayer -> Co-op Story, Co-op 'Lite', Party Games, FrenzyFest; a Select Players
+  screen with four slots ("Press A to join", "Press Y to sign in"). PC (`mp1`, `REX_FEEDINGFRENZY2_INPUT_SCRIPT_P2`):
+  player 2 joins with A and plays Co-op Story next to player 1 (two fish, two score panels). `mp2`: player 2's Y signs
+  controller 2 in as the profile's guest ("[XAM] controller 2 signed in as guest User(1) of the profile"; the slot shows
+  "User(1)"). Players 3 and 4 and the Switch driver's per-player maps are not run (the PC uses the SDL driver; the
+  scripted pads land behind Ryujinx's own controllers).
+- **The option:** `app/feedingfrenzy2_switch.toml` (the player's file, written next to the NRO at the first start)
+  now explains the controllers as Peggle 2's does: up to four players, the controller types, L + R + ZR, the layout
+  by position, single Joy-Cons, and each player's map with examples for players 1-4. It replaces Bejeweled 3's text,
+  which named the wrong game and described the layout wrongly ("A is the right button"). Ryujinx `firststart` (no
+  toml on the SD): the NRO wrote the new file, identical to the source. A player's existing file is kept; the keys work
+  in it when added by hand.
+- Delivered: the NRO `4fc8e5e6...` (the optimised build with the new file) in
+  `out/dist/dev_20261026_feedingfrenzy2/feedingfrenzy2-nx/`, README.txt updated; ELF and map
+  `out/nx/elf/feedingfrenzy2_dev_opt_mp_20261026.*`.

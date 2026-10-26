@@ -1,11 +1,27 @@
-# Bejeweled 3 for the Nintendo Switch: your options. This file is written next to the NRO at the first start when there is
-# none; edit it there. Everything else is built into the NRO.
+# Feeding Frenzy 2 for the Nintendo Switch: your options. This file is written next to the NRO at the first start when
+# there is none; edit it there (delete it to get the defaults back). Everything else is built into the NRO.
 
 # The game's language: "" (the console's system language; English when the game does not have it), en, ja, de,
 # fr, es, it or pt.
 feedingfrenzy2_language = ""
 
-# Controllers: the Xbox button layout (A and B as on an Xbox pad: A is the right button), and a single Joy-Con held
-# sideways.
+# Controllers: up to four players for Multiplayer (Co-op Story, Co-op 'Lite', Party Games, FrenzyFest): the handheld
+# Joy-Cons, Pro Controllers, Joy-Con pairs, or single Joy-Cons held sideways, one per player. Each controller joins on
+# the Select Players screen with its A button (Y signs it in as a guest of the profile, which joining does not need).
+# L + R + ZR opens the console's controller screen: connect another controller, change the player order, or split a
+# Joy-Con pair into two players.
+#
+# Face buttons by position, as on the Xbox 360 pad the game was made for: the bottom button (B on Switch
+# controllers) is A, the right one (A) is B, the left one (Y) is X, the top one (X) is Y. false = by letter.
 input_xbox_layout = true
+# Single Joy-Cons are held sideways, one per player.
 input_joycon_sideways = true
+# Each player's own layout: which Switch buttons press an Xbox button, as a list of A B X Y L R ZL ZR PLUS MINUS
+# LSTICK RSTICK UP DOWN LEFT RIGHT SL SR, or NONE. Keys: input_p1_ to input_p4_ followed by a b x y lb rb lt rt start
+# back ls rs up down left right. Empty or missing = the default above. A single Joy-Con held sideways names its four
+# face buttons by the place they take there (the right one is A, the bottom one B, the top one X, the left one Y).
+# Examples (remove the # to use one):
+# input_p1_a = "B, ZR"          # player 1: B or ZR is the Xbox A button
+# input_p2_a = "B, SR"          # player 2 on a sideways Joy-Con: B or SR
+# input_p3_start = "PLUS, MINUS"  # player 3: either button pauses
+# input_p4_b = "A, SL"
