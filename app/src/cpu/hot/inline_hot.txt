@@ -1,0 +1,5 @@
+# Leaf functions the localized copies call inline (tools/localize_native.py, inline_callees), besides the generator's
+# tiny leaves (12 guest instructions or fewer): the console profile's hottest leaves of up to 160 instructions.
+# bejeweled3-nx, 2026-10-22, from the 11:03 NRO's Lightning run (feedingfrenzy2_001 (4).log: calls in the run; the call
+# sites are the copies'). Hand-written natives (sub_822DFF80 among the hottest) keep their hooks.
+# feedingfrenzy-nx (2026-10-26): empty until a profile of Feeding Frenzy (Bejeweled 3's entries removed).
