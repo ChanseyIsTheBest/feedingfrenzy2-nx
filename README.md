@@ -2,7 +2,7 @@
 
 <h1 align=center>Feeding Frenzy 2: Nintendo Switch port</h1>
 
-<p align=center><b>feedingfrenzy2-nx 1.0.0</b> · <a href="https://chanseyisthebest.github.io/feedingfrenzy2-nx-installer/">web installer</a> · <a href="https://github.com/ChanseyIsTheBest/feedingfrenzy2-nx/releases/tag/v1.0.0">release</a></p>
+<p align=center><b>feedingfrenzy2-nx 1.0.1</b> · <a href="https://chanseyisthebest.github.io/feedingfrenzy2-nx-installer/">web installer</a> · <a href="https://github.com/ChanseyIsTheBest/feedingfrenzy2-nx/releases/tag/v1.0.1">release</a></p>
 
 An unofficial native port of the Xbox 360 (Xbox Live Arcade) version of **Feeding Frenzy 2: Shipwreck Showdown** (2008)
 by Sprout Games and PopCap Games, made by static recompilation with [ReXGlue](https://github.com/rexglue/rexglue-sdk).
@@ -33,6 +33,10 @@ Arcade game's content package (`Content/0000000000000000/5841088C/000D0000/D4F5B
   the Select Players screen; **L + R + ZR** opens the console's controller screen.
 - The left stick (or D-pad) moves your fish; face buttons work by position, as on the Xbox 360 pad (B is the Xbox's A,
   A is B, Y is X, X is Y; + is Start, − is Back).
+- A game menu: hold **A + B + X + Y + L + R** together (**+** closes it) for the settings (language, button layout,
+  Joy-Con, and the menu's own buttons, colour, font and background), the achievements and each player's controls. It
+  saves your choices in `feedingfrenzy2.toml`.
+- A smaller install: the installer stores the game files compressed, with the sounds as Opus.
 - No log files are kept; only a crash writes `logs/rex/rex_crash.log`.
 
 `feedingfrenzy2.toml`, next to the NRO, holds your options (delete it to get the defaults back):
